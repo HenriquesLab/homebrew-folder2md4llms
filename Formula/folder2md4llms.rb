@@ -17,6 +17,10 @@ class Folder2md4llms < Formula
   uses_from_macos "libxml2"
   uses_from_macos "libxslt"
 
+  on_linux do
+    depends_on "pkg-config"
+  end
+
   resource "anyio" do
     url "https://files.pythonhosted.org/packages/95/7d/4c1bd541d4dffa1b52bd83fb8527089e097a106fc90b467a7313b105f840/anyio-4.9.0.tar.gz"
     sha256 "673c0c244e15788651a4ff38710fea9675823028a6f08a5eda409e0c9840a028"
@@ -298,21 +302,23 @@ class Folder2md4llms < Formula
   end
 
   def install
-    ENV["LDFLAGS"] = "-L#{Formula["jpeg-turbo"].opt_lib} " \
-                     "-L#{Formula["libpng"].opt_lib} " \
-                     "-L#{Formula["libtiff"].opt_lib} " \
-                     "-L#{Formula["freetype"].opt_lib} " \
-                     "-L#{Formula["zlib"].opt_lib}"
-    ENV["CPPFLAGS"] = "-I#{Formula["jpeg-turbo"].opt_include} " \
-                      "-I#{Formula["libpng"].opt_include} " \
-                      "-I#{Formula["libtiff"].opt_include} " \
-                      "-I#{Formula["freetype"].opt_include} " \
-                      "-I#{Formula["zlib"].opt_include}"
-    ENV["PKG_CONFIG_PATH"] = "#{Formula["jpeg-turbo"].opt_lib}/pkgconfig:" \
-                             "#{Formula["libpng"].opt_lib}/pkgconfig:" \
-                             "#{Formula["libtiff"].opt_lib}/pkgconfig:" \
-                             "#{Formula["freetype"].opt_lib}/pkgconfig:" \
-                             "#{Formula["zlib"].opt_lib}/pkgconfig"
+    ENV.prepend_path "PKG_CONFIG_PATH", Formula["jpeg-turbo"].opt_lib/"pkgconfig"
+    ENV.prepend_path "PKG_CONFIG_PATH", Formula["libpng"].opt_lib/"pkgconfig"
+    ENV.prepend_path "PKG_CONFIG_PATH", Formula["libtiff"].opt_lib/"pkgconfig"
+    ENV.prepend_path "PKG_CONFIG_PATH", Formula["freetype"].opt_lib/"pkgconfig"
+    ENV.prepend_path "PKG_CONFIG_PATH", Formula["zlib"].opt_lib/"pkgconfig"
+
+    ENV.append_to_cflags "-I#{Formula["jpeg-turbo"].opt_include}"
+    ENV.append_to_cflags "-I#{Formula["libpng"].opt_include}"
+    ENV.append_to_cflags "-I#{Formula["libtiff"].opt_include}"
+    ENV.append_to_cflags "-I#{Formula["freetype"].opt_include}"
+    ENV.append_to_cflags "-I#{Formula["zlib"].opt_include}"
+
+    ENV.append "LDFLAGS", "-L#{Formula["jpeg-turbo"].opt_lib}"
+    ENV.append "LDFLAGS", "-L#{Formula["libpng"].opt_lib}"
+    ENV.append "LDFLAGS", "-L#{Formula["libtiff"].opt_lib}"
+    ENV.append "LDFLAGS", "-L#{Formula["freetype"].opt_lib}"
+    ENV.append "LDFLAGS", "-L#{Formula["zlib"].opt_lib}"
 
     virtualenv_install_with_resources
   end
