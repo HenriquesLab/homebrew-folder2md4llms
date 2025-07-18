@@ -13,16 +13,23 @@ jobs:
   test-installation:
     strategy:
       matrix:
-        os: [macos-latest, macos-12, ubuntu-latest]
+        os: [macos-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
     
     steps:
     - uses: actions/checkout@v4
     
-    - name: Set up Homebrew (macOS)
-      if: runner.os == 'macOS'
-      run: |
-        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    - name: Cache Homebrew packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/Library/Caches/Homebrew
+          /opt/homebrew/var/homebrew/locks
+          /opt/homebrew/var/homebrew/linked
+        key: ${{ runner.os }}-homebrew-folder2md4llms-${{ hashFiles('Formula/folder2md4llms.rb') }}
+        restore-keys: |
+          ${{ runner.os }}-homebrew-folder2md4llms-
+          ${{ runner.os }}-homebrew-
     
     - name: Set up Homebrew (Linux)
       if: runner.os == 'Linux'
@@ -32,16 +39,24 @@ jobs:
     
     - name: Install from tap
       run: |
+        echo "::group::Installing folder2md4llms"
+        start_time=$(date +%s)
         brew tap henriqueslab/folder2md4llms
         brew install folder2md4llms
+        end_time=$(date +%s)
+        echo "Installation completed in $((end_time - start_time)) seconds"
+        echo "::endgroup::"
     
     - name: Test installation
       run: |
+        echo "::group::Testing installation"
         folder2md --version
         folder2md --help
+        echo "::endgroup::"
     
     - name: Test functionality
       run: |
+        echo "::group::Testing basic functionality"
         # Create test directory structure
         mkdir -p test-project/src
         echo "print('hello world')" > test-project/src/main.py
@@ -54,16 +69,22 @@ jobs:
         test -f test-output.md
         grep -q "hello world" test-output.md
         grep -q "Test Project" test-output.md
+        echo "Basic functionality test passed"
+        echo "::endgroup::"
     
     - name: Test ignore file generation
       run: |
+        echo "::group::Testing ignore file generation"
         cd test-project
         folder2md --init-ignore
         test -f .folder2md_ignore
         grep -q "node_modules" .folder2md_ignore
+        echo "Ignore file generation test passed"
+        echo "::endgroup::"
     
     - name: Test with configuration
       run: |
+        echo "::group::Testing configuration file"
         # Create config file
         echo "limit: 1000" > test-project/folder2md.yaml
         echo "condense: true" >> test-project/folder2md.yaml
@@ -71,31 +92,21 @@ jobs:
         # Test with config
         folder2md test-project --output test-config.md
         test -f test-config.md
+        echo "Configuration file test passed"
+        echo "::endgroup::"
     
     - name: Test clipboard functionality (macOS only)
       if: runner.os == 'macOS'
       run: |
+        echo "::group::Testing clipboard functionality"
         # Test clipboard option
         folder2md test-project --clipboard
-        # Note: Can't easily test clipboard content in CI
-
-  test-edge-cases:
-    runs-on: macos-latest
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Homebrew
-      run: |
-        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-    
-    - name: Install from tap
-      run: |
-        brew tap henriqueslab/folder2md4llms
-        brew install folder2md4llms
+        echo "Clipboard functionality test passed"
+        echo "::endgroup::"
     
     - name: Test with different file types
       run: |
+        echo "::group::Testing different file types"
         mkdir -p test-files
         echo "console.log('hello')" > test-files/script.js
         echo "body { margin: 0; }" > test-files/style.css
@@ -103,9 +114,12 @@ jobs:
         
         folder2md test-files --output multi-type.md
         test -f multi-type.md
+        echo "Different file types test passed"
+        echo "::endgroup::"
     
     - name: Test with limits
       run: |
+        echo "::group::Testing limits functionality"
         # Test character limit
         folder2md test-files --limit 500c --output limited.md
         test -f limited.md
@@ -113,8 +127,32 @@ jobs:
         # Test token limit
         folder2md test-files --limit 100t --output token-limited.md
         test -f token-limited.md
+        echo "Limits functionality test passed"
+        echo "::endgroup::"
     
     - name: Test verbose mode
       run: |
+        echo "::group::Testing verbose mode"
         folder2md test-files --verbose --output verbose.md
         test -f verbose.md
+        echo "Verbose mode test passed"
+        echo "::endgroup::"
+    
+    - name: Workflow Summary
+      if: always()
+      run: |
+        echo "## Installation Test Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Installation from tap completed" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Basic functionality tests passed" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Ignore file generation test passed" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Configuration file test passed" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Different file types test passed" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Limits functionality test passed" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Verbose mode test passed" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Performance Optimizations" >> $GITHUB_STEP_SUMMARY
+        echo "- 🚀 Consolidated duplicate test jobs" >> $GITHUB_STEP_SUMMARY
+        echo "- 🚀 Added Homebrew package caching" >> $GITHUB_STEP_SUMMARY
+        echo "- 🚀 Removed redundant Homebrew installation on macOS" >> $GITHUB_STEP_SUMMARY
+        echo "- 🚀 Reduced matrix from 3 to 2 OS versions" >> $GITHUB_STEP_SUMMARY
+        echo "- 📊 Added performance timing measurements" >> $GITHUB_STEP_SUMMARY

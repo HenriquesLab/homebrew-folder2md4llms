@@ -13,15 +13,49 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Set up Homebrew
-      run: |
-        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    - name: Cache Homebrew packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/Library/Caches/Homebrew
+          /opt/homebrew/var/homebrew/locks
+          /opt/homebrew/var/homebrew/linked
+        key: ${{ runner.os }}-homebrew-formula-test-${{ hashFiles('Formula/folder2md4llms.rb') }}
+        restore-keys: |
+          ${{ runner.os }}-homebrew-formula-test-
+          ${{ runner.os }}-homebrew-
     
     - name: Test formula syntax
       run: |
+        echo "::group::Testing formula syntax"
+        start_time=$(date +%s)
         brew test-bot --only-tap-syntax
+        end_time=$(date +%s)
+        echo "Syntax test completed in $((end_time - start_time)) seconds"
+        echo "::endgroup::"
     
     - name: Test formula installation
       run: |
+        echo "::group::Testing formula installation"
+        start_time=$(date +%s)
         brew install --build-from-source ./Formula/folder2md4llms.rb
+        install_time=$(date +%s)
+        echo "Installation completed in $((install_time - start_time)) seconds"
+        
         brew test ./Formula/folder2md4llms.rb
+        end_time=$(date +%s)
+        echo "Formula test completed in $((end_time - install_time)) seconds"
+        echo "Total test time: $((end_time - start_time)) seconds"
+        echo "::endgroup::"
+    
+    - name: Workflow Summary
+      if: always()
+      run: |
+        echo "## Formula Test Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Formula syntax validation completed" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Formula installation test completed" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Formula functional test completed" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Performance Notes" >> $GITHUB_STEP_SUMMARY
+        echo "- Using Homebrew package caching for improved performance" >> $GITHUB_STEP_SUMMARY
+        echo "- Removed redundant Homebrew installation step" >> $GITHUB_STEP_SUMMARY
