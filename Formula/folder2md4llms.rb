@@ -7,11 +7,11 @@ class Folder2md4llms < Formula
   sha256 "77010763c38b48904a330dbd46eefd0d287e0a058c5000ac04ae81b1ba8e2ed8"
   license "MIT"
 
-  depends_on "python@3.11"
+  depends_on "freetype"
   depends_on "jpeg-turbo"
   depends_on "libpng"
   depends_on "libtiff"
-  depends_on "freetype"
+  depends_on "python@3.11"
   depends_on "zlib"
 
   uses_from_macos "libxml2"
@@ -298,10 +298,22 @@ class Folder2md4llms < Formula
   end
 
   def install
-    ENV["LDFLAGS"] = "-L#{Formula["jpeg-turbo"].opt_lib} -L#{Formula["libpng"].opt_lib} -L#{Formula["libtiff"].opt_lib} -L#{Formula["freetype"].opt_lib} -L#{Formula["zlib"].opt_lib}"
-    ENV["CPPFLAGS"] = "-I#{Formula["jpeg-turbo"].opt_include} -I#{Formula["libpng"].opt_include} -I#{Formula["libtiff"].opt_include} -I#{Formula["freetype"].opt_include} -I#{Formula["zlib"].opt_include}"
-    ENV["PKG_CONFIG_PATH"] = "#{Formula["jpeg-turbo"].opt_lib}/pkgconfig:#{Formula["libpng"].opt_lib}/pkgconfig:#{Formula["libtiff"].opt_lib}/pkgconfig:#{Formula["freetype"].opt_lib}/pkgconfig:#{Formula["zlib"].opt_lib}/pkgconfig"
-    
+    ENV["LDFLAGS"] = "-L#{Formula["jpeg-turbo"].opt_lib} " \
+                     "-L#{Formula["libpng"].opt_lib} " \
+                     "-L#{Formula["libtiff"].opt_lib} " \
+                     "-L#{Formula["freetype"].opt_lib} " \
+                     "-L#{Formula["zlib"].opt_lib}"
+    ENV["CPPFLAGS"] = "-I#{Formula["jpeg-turbo"].opt_include} " \
+                      "-I#{Formula["libpng"].opt_include} " \
+                      "-I#{Formula["libtiff"].opt_include} " \
+                      "-I#{Formula["freetype"].opt_include} " \
+                      "-I#{Formula["zlib"].opt_include}"
+    ENV["PKG_CONFIG_PATH"] = "#{Formula["jpeg-turbo"].opt_lib}/pkgconfig:" \
+                             "#{Formula["libpng"].opt_lib}/pkgconfig:" \
+                             "#{Formula["libtiff"].opt_lib}/pkgconfig:" \
+                             "#{Formula["freetype"].opt_lib}/pkgconfig:" \
+                             "#{Formula["zlib"].opt_lib}/pkgconfig"
+
     virtualenv_install_with_resources
   end
 
