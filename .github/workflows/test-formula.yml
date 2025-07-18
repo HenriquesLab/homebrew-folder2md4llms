@@ -26,12 +26,10 @@ jobs:
       with:
         path: |
           ~/Library/Caches/Homebrew
-          /opt/homebrew/var/homebrew/locks
-          /opt/homebrew/var/homebrew/linked
-        key: ${{ runner.os }}-homebrew-formula-test-${{ hashFiles('Formula/folder2md4llms.rb') }}
+        key: ${{ runner.os }}-${{ matrix.os }}-homebrew-formula-test-${{ hashFiles('Formula/folder2md4llms.rb') }}
         restore-keys: |
-          ${{ runner.os }}-homebrew-formula-test-
-          ${{ runner.os }}-homebrew-
+          ${{ runner.os }}-${{ matrix.os }}-homebrew-formula-test-
+          ${{ runner.os }}-${{ matrix.os }}-homebrew-
     
     - name: Validate Formula syntax
       run: |
@@ -69,9 +67,21 @@ jobs:
         export HOMEBREW_NO_INSTALL_FROM_API=1
         
         # Install from local formula file
-        brew install --build-from-source --formula ./Formula/folder2md4llms.rb
-        install_time=$(date +%s)
-        echo "Installation completed in $((install_time - start_time)) seconds"
+        echo "Starting brew install..."
+        if brew install --build-from-source --formula ./Formula/folder2md4llms.rb; then
+          install_time=$(date +%s)
+          echo "Installation completed in $((install_time - start_time)) seconds"
+          echo "Verifying installation..."
+          ls -la $(brew --prefix)/bin/folder2md || true
+          which folder2md || true
+        else
+          echo "Installation failed!"
+          echo "Homebrew logs:"
+          brew logs folder2md4llms || true
+          echo "Available formulas:"
+          brew list --formula | head -10
+          exit 1
+        fi
         echo "::endgroup::"
     
     - name: Verify installation and dependencies
