@@ -17,7 +17,23 @@ jobs:
     - name: Validate formula syntax
       run: |
         echo "::group::Validating formula syntax"
-        brew audit --strict --formula ./Formula/folder2md4llms.rb
+        # Set environment variable to use local formula instead of API
+        export HOMEBREW_NO_INSTALL_FROM_API=1
+        
+        # Create a temporary tap for formula validation
+        echo "Creating temporary tap for formula validation..."
+        brew tap-new test-folder2md4llms/tap --no-git
+        
+        # Copy formula to temporary tap
+        cp ./Formula/folder2md4llms.rb $(brew --repository)/Library/Taps/test-folder2md4llms/homebrew-tap/Formula/
+        
+        # Run audit on the formula by name
+        echo "Running formula audit..."
+        brew audit --strict --formula test-folder2md4llms/tap/folder2md4llms
+        
+        # Clean up temporary tap
+        echo "Cleaning up temporary tap..."
+        brew untap test-folder2md4llms/tap
         echo "::endgroup::"
     
     - name: Check formula dependencies
@@ -45,6 +61,9 @@ jobs:
       run: |
         echo "::group::Testing formula installation"
         start_time=$(date +%s)
+        
+        # Set environment variable to use local formula instead of API
+        export HOMEBREW_NO_INSTALL_FROM_API=1
         
         # Install the formula
         brew install --build-from-source ./Formula/folder2md4llms.rb
