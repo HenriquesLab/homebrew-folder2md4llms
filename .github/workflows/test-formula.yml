@@ -210,7 +210,7 @@ jobs:
         echo "✅ Basic functionality test passed"
         
         # Test ignore file generation
-        folder2md --init-ignore --force
+        folder2md --init-ignore
         if [ ! -f .folder2md_ignore ]; then
           echo "❌ .folder2md_ignore file was not created"
           exit 1
