@@ -141,18 +141,20 @@ jobs:
     - name: Workflow Summary
       if: always()
       run: |
-        echo "## Installation Test Summary" >> $GITHUB_STEP_SUMMARY
-        echo "- ✅ Installation from tap completed" >> $GITHUB_STEP_SUMMARY
-        echo "- ✅ Basic functionality tests passed" >> $GITHUB_STEP_SUMMARY
-        echo "- ✅ Ignore file generation test passed" >> $GITHUB_STEP_SUMMARY
-        echo "- ✅ Configuration file test passed" >> $GITHUB_STEP_SUMMARY
-        echo "- ✅ Different file types test passed" >> $GITHUB_STEP_SUMMARY
-        echo "- ✅ Limits functionality test passed" >> $GITHUB_STEP_SUMMARY
-        echo "- ✅ Verbose mode test passed" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### Performance Optimizations" >> $GITHUB_STEP_SUMMARY
-        echo "- 🚀 Consolidated duplicate test jobs" >> $GITHUB_STEP_SUMMARY
-        echo "- 🚀 Added Homebrew package caching" >> $GITHUB_STEP_SUMMARY
-        echo "- 🚀 Removed redundant Homebrew installation on macOS" >> $GITHUB_STEP_SUMMARY
-        echo "- 🚀 Reduced matrix from 3 to 2 OS versions" >> $GITHUB_STEP_SUMMARY
-        echo "- 📊 Added performance timing measurements" >> $GITHUB_STEP_SUMMARY
+        {
+          echo "## Installation Test Summary"
+          echo "- ✅ Installation from tap completed"
+          echo "- ✅ Basic functionality tests passed"
+          echo "- ✅ Ignore file generation test passed"
+          echo "- ✅ Configuration file test passed"
+          echo "- ✅ Different file types test passed"
+          echo "- ✅ Limits functionality test passed"
+          echo "- ✅ Verbose mode test passed"
+          echo ""
+          echo "### Performance Optimizations"
+          echo "- 🚀 Consolidated duplicate test jobs"
+          echo "- 🚀 Added Homebrew package caching"
+          echo "- 🚀 Removed redundant Homebrew installation on macOS"
+          echo "- 🚀 Reduced matrix from 3 to 2 OS versions"
+          echo "- 📊 Added performance timing measurements"
+        } >> "$GITHUB_STEP_SUMMARY"

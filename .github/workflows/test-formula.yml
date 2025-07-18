@@ -51,11 +51,13 @@ jobs:
     - name: Workflow Summary
       if: always()
       run: |
-        echo "## Formula Test Summary" >> $GITHUB_STEP_SUMMARY
-        echo "- ✅ Formula syntax validation completed" >> $GITHUB_STEP_SUMMARY
-        echo "- ✅ Formula installation test completed" >> $GITHUB_STEP_SUMMARY
-        echo "- ✅ Formula functional test completed" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### Performance Notes" >> $GITHUB_STEP_SUMMARY
-        echo "- Using Homebrew package caching for improved performance" >> $GITHUB_STEP_SUMMARY
-        echo "- Removed redundant Homebrew installation step" >> $GITHUB_STEP_SUMMARY
+        {
+          echo "## Formula Test Summary"
+          echo "- ✅ Formula syntax validation completed"
+          echo "- ✅ Formula installation test completed"
+          echo "- ✅ Formula functional test completed"
+          echo ""
+          echo "### Performance Notes"
+          echo "- Using Homebrew package caching for improved performance"
+          echo "- Removed redundant Homebrew installation step"
+        } >> "$GITHUB_STEP_SUMMARY"
