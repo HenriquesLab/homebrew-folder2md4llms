@@ -80,7 +80,7 @@ jobs:
         
         # Run audit on the formula
         echo "Running formula audit..."
-        brew audit --strict --formula "$TAP_NAME/folder2md4llms" || {
+        brew audit --strict --formula folder2md4llms || {
           echo "::error::Formula audit failed"
           brew untap "$TAP_NAME"
           exit 1
@@ -176,7 +176,7 @@ jobs:
         echo "✅ Basic functionality test passed"
         
         # Test ignore file generation
-        folder2md --init-ignore
+        folder2md --init-ignore --force
         if [ ! -f .folder2md_ignore ]; then
           echo "❌ .folder2md_ignore file was not created"
           exit 1
