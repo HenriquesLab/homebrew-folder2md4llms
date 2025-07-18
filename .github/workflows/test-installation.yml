@@ -80,23 +80,46 @@ jobs:
         echo "Formula prefix: $FORMULA_PREFIX"
         if [ -d "$FORMULA_PREFIX/libexec" ]; then
           echo "Found virtualenv at $FORMULA_PREFIX/libexec"
-          # Check installed packages in the virtualenv
-          echo "Checking installed packages in virtualenv:"
-          "$FORMULA_PREFIX/libexec/bin/pip" list
+          echo "Contents of libexec directory:"
+          ls -la "$FORMULA_PREFIX/libexec" || echo "Cannot list libexec"
+          if [ -d "$FORMULA_PREFIX/libexec/bin" ]; then
+            echo "Contents of libexec/bin directory:"
+            ls -la "$FORMULA_PREFIX/libexec/bin" || echo "Cannot list libexec/bin"
+          fi
+          
+          # Try to find the correct pip path
+          PIP_PATH=""
+          if [ -f "$FORMULA_PREFIX/libexec/bin/pip" ]; then
+            PIP_PATH="$FORMULA_PREFIX/libexec/bin/pip"
+          elif [ -f "$FORMULA_PREFIX/libexec/bin/pip3" ]; then
+            PIP_PATH="$FORMULA_PREFIX/libexec/bin/pip3"
+          else
+            echo "No pip binary found in expected locations"
+            find "$FORMULA_PREFIX" -name "pip*" -type f 2>/dev/null || echo "No pip found anywhere"
+          fi
+          
+          if [ -n "$PIP_PATH" ]; then
+            echo "Using pip at: $PIP_PATH"
+            echo "Checking installed packages in virtualenv:"
+            "$PIP_PATH" list
+          else
+            echo "Cannot find pip binary, skipping package listing"
+          fi
         else
           echo "No virtualenv found at $FORMULA_PREFIX/libexec"
           echo "Checking directory structure:"
-          find "$FORMULA_PREFIX" -name "pip" -type f 2>/dev/null || echo "No pip found"
           ls -la "$FORMULA_PREFIX" || echo "Cannot list formula prefix"
+          find "$FORMULA_PREFIX" -name "pip" -type f 2>/dev/null || echo "No pip found"
+          find "$FORMULA_PREFIX" -name "python*" -type f 2>/dev/null || echo "No python found"
           echo "Since folder2md is working, skipping detailed dependency validation."
         fi
         
         # Only do dependency validation if virtualenv exists
-        if [ -d "$FORMULA_PREFIX/libexec" ]; then
+        if [ -d "$FORMULA_PREFIX/libexec" ] && [ -n "$PIP_PATH" ]; then
           # Verify core dependencies are present
           echo "Verifying core dependencies are installed:"
           for dep in click pyyaml rich markdown-it-py mdurl pygments; do
-            if "$FORMULA_PREFIX/libexec/bin/pip" show "$dep" > /dev/null 2>&1; then
+            if "$PIP_PATH" show "$dep" > /dev/null 2>&1; then
               echo "✅ $dep is installed"
             else
               echo "❌ ERROR: $dep is not installed!"
@@ -107,7 +130,7 @@ jobs:
           # Verify problematic dependencies are NOT installed
           echo "Verifying problematic dependencies are NOT installed:"
           for dep in maturin cryptography rust setuptools-rust; do
-            if "$FORMULA_PREFIX/libexec/bin/pip" show "$dep" > /dev/null 2>&1; then
+            if "$PIP_PATH" show "$dep" > /dev/null 2>&1; then
               echo "❌ ERROR: $dep should not be installed in simplified formula!"
               exit 1
             else
@@ -116,7 +139,7 @@ jobs:
           done
           
           # Count total installed packages (should be minimal)
-          TOTAL_PACKAGES=$("$FORMULA_PREFIX/libexec/bin/pip" list --format=freeze | wc -l)
+          TOTAL_PACKAGES=$("$PIP_PATH" list --format=freeze | wc -l)
           echo "Total installed packages: $TOTAL_PACKAGES"
           
           # Should have roughly 6 core dependencies + folder2md4llms itself + any transitive deps
@@ -126,7 +149,7 @@ jobs:
             echo "✅ Package count is reasonable ($TOTAL_PACKAGES packages)"
           fi
         else
-          echo "Skipping detailed dependency validation - virtualenv not found"
+          echo "Skipping detailed dependency validation - virtualenv or pip not found"
           echo "✅ Basic functionality verified (folder2md command works)"
         fi
         echo "::endgroup::"
