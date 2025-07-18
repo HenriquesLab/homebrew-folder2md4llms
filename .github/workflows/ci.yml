@@ -66,7 +66,7 @@ jobs:
         export HOMEBREW_NO_INSTALL_FROM_API=1
         
         # Install the formula
-        brew install --build-from-source ./Formula/folder2md4llms.rb
+        brew install --build-from-source --formula ./Formula/folder2md4llms.rb
         
         end_time=$(date +%s)
         echo "Installation completed in $((end_time - start_time)) seconds"
