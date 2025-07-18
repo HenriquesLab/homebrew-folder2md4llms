@@ -1,0 +1,120 @@
+name: Test Installation
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run weekly to catch upstream changes
+    - cron: '0 0 * * 0'
+
+jobs:
+  test-installation:
+    strategy:
+      matrix:
+        os: [macos-latest, macos-12, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Homebrew (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    
+    - name: Set up Homebrew (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        echo "/home/linuxbrew/.linuxbrew/bin" >> $GITHUB_PATH
+    
+    - name: Install from tap
+      run: |
+        brew tap henriqueslab/folder2md4llms
+        brew install folder2md4llms
+    
+    - name: Test installation
+      run: |
+        folder2md --version
+        folder2md --help
+    
+    - name: Test functionality
+      run: |
+        # Create test directory structure
+        mkdir -p test-project/src
+        echo "print('hello world')" > test-project/src/main.py
+        echo "# Test Project" > test-project/README.md
+        
+        # Test basic conversion
+        folder2md test-project --output test-output.md
+        
+        # Verify output file exists and contains expected content
+        test -f test-output.md
+        grep -q "hello world" test-output.md
+        grep -q "Test Project" test-output.md
+    
+    - name: Test ignore file generation
+      run: |
+        cd test-project
+        folder2md --init-ignore
+        test -f .folder2md_ignore
+        grep -q "node_modules" .folder2md_ignore
+    
+    - name: Test with configuration
+      run: |
+        # Create config file
+        echo "limit: 1000" > test-project/folder2md.yaml
+        echo "condense: true" >> test-project/folder2md.yaml
+        
+        # Test with config
+        folder2md test-project --output test-config.md
+        test -f test-config.md
+    
+    - name: Test clipboard functionality (macOS only)
+      if: runner.os == 'macOS'
+      run: |
+        # Test clipboard option
+        folder2md test-project --clipboard
+        # Note: Can't easily test clipboard content in CI
+
+  test-edge-cases:
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Homebrew
+      run: |
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    
+    - name: Install from tap
+      run: |
+        brew tap henriqueslab/folder2md4llms
+        brew install folder2md4llms
+    
+    - name: Test with different file types
+      run: |
+        mkdir -p test-files
+        echo "console.log('hello')" > test-files/script.js
+        echo "body { margin: 0; }" > test-files/style.css
+        echo "# Header" > test-files/doc.md
+        
+        folder2md test-files --output multi-type.md
+        test -f multi-type.md
+    
+    - name: Test with limits
+      run: |
+        # Test character limit
+        folder2md test-files --limit 500c --output limited.md
+        test -f limited.md
+        
+        # Test token limit
+        folder2md test-files --limit 100t --output token-limited.md
+        test -f token-limited.md
+    
+    - name: Test verbose mode
+      run: |
+        folder2md test-files --verbose --output verbose.md
+        test -f verbose.md

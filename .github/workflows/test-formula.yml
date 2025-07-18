@@ -1,0 +1,27 @@
+name: Test Formula
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-formula:
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Homebrew
+      run: |
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    
+    - name: Test formula syntax
+      run: |
+        brew test-bot --only-tap-syntax
+    
+    - name: Test formula installation
+      run: |
+        brew install --build-from-source ./Formula/folder2md4llms.rb
+        brew test ./Formula/folder2md4llms.rb
