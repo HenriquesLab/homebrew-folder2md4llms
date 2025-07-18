@@ -7,7 +7,13 @@ class Folder2md4llms < Formula
   sha256 "77010763c38b48904a330dbd46eefd0d287e0a058c5000ac04ae81b1ba8e2ed8"
   license "MIT"
 
+  depends_on "freetype"
+  depends_on "jpeg-turbo"
+  depends_on "libpng"
+  depends_on "libtiff"
   depends_on "python@3.11"
+  depends_on "webp"
+  depends_on "zlib"
 
   uses_from_macos "libxml2"
   uses_from_macos "libxslt"
@@ -253,6 +259,14 @@ class Folder2md4llms < Formula
   end
 
   def install
+    # Configure build environment for Pillow
+    ENV.prepend_path "PKG_CONFIG_PATH", Formula["jpeg-turbo"].opt_lib/"pkgconfig"
+    ENV.prepend_path "PKG_CONFIG_PATH", Formula["libpng"].opt_lib/"pkgconfig"
+    ENV.prepend_path "PKG_CONFIG_PATH", Formula["libtiff"].opt_lib/"pkgconfig"
+    ENV.prepend_path "PKG_CONFIG_PATH", Formula["freetype"].opt_lib/"pkgconfig"
+    ENV.prepend_path "PKG_CONFIG_PATH", Formula["webp"].opt_lib/"pkgconfig"
+    ENV.prepend_path "PKG_CONFIG_PATH", Formula["zlib"].opt_lib/"pkgconfig"
+
     virtualenv_install_with_resources
   end
 
