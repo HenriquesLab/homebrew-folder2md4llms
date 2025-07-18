@@ -37,21 +37,66 @@ jobs:
         /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
         echo "/home/linuxbrew/.linuxbrew/bin" >> "${GITHUB_PATH}"
     
-    - name: Install from tap
+    - name: Install from local formula
       run: |
-        echo "::group::Installing folder2md4llms"
+        echo "::group::Installing folder2md4llms from local formula"
         start_time=$(date +%s)
-        brew tap henriqueslab/folder2md4llms
-        brew install folder2md4llms
+        brew install --formula ./Formula/folder2md4llms.rb
         end_time=$(date +%s)
         echo "Installation completed in $((end_time - start_time)) seconds"
         echo "::endgroup::"
     
-    - name: Test installation
+    - name: Test installation and validate dependencies
       run: |
         echo "::group::Testing installation"
         folder2md --version
         folder2md --help
+        echo "::endgroup::"
+        
+        echo "::group::Validating simplified dependencies"
+        # Get the installation prefix for the formula
+        if [[ "${{ runner.os }}" == "macOS" ]]; then
+          FORMULA_PREFIX=$(brew --prefix folder2md4llms)
+        else
+          FORMULA_PREFIX=/home/linuxbrew/.linuxbrew/opt/folder2md4llms
+        fi
+        
+        # Check installed packages in the virtualenv
+        echo "Checking installed packages in virtualenv:"
+        "$FORMULA_PREFIX/libexec/bin/pip" list
+        
+        # Verify core dependencies are present
+        echo "Verifying core dependencies are installed:"
+        for dep in click pyyaml rich markdown-it-py mdurl pygments; do
+          if "$FORMULA_PREFIX/libexec/bin/pip" show "$dep" > /dev/null 2>&1; then
+            echo "✅ $dep is installed"
+          else
+            echo "❌ ERROR: $dep is not installed!"
+            exit 1
+          fi
+        done
+        
+        # Verify problematic dependencies are NOT installed
+        echo "Verifying problematic dependencies are NOT installed:"
+        for dep in maturin cryptography rust setuptools-rust; do
+          if "$FORMULA_PREFIX/libexec/bin/pip" show "$dep" > /dev/null 2>&1; then
+            echo "❌ ERROR: $dep should not be installed in simplified formula!"
+            exit 1
+          else
+            echo "✅ $dep is not installed (as expected)"
+          fi
+        done
+        
+        # Count total installed packages (should be minimal)
+        TOTAL_PACKAGES=$("$FORMULA_PREFIX/libexec/bin/pip" list --format=freeze | wc -l)
+        echo "Total installed packages: $TOTAL_PACKAGES"
+        
+        # Should have roughly 6 core dependencies + folder2md4llms itself + any transitive deps
+        if [ "$TOTAL_PACKAGES" -gt 20 ]; then
+          echo "⚠️  WARNING: More packages installed than expected ($TOTAL_PACKAGES). This may indicate dependency creep."
+        else
+          echo "✅ Package count is reasonable ($TOTAL_PACKAGES packages)"
+        fi
         echo "::endgroup::"
     
     - name: Test functionality
@@ -62,14 +107,41 @@ jobs:
         echo "print('hello world')" > test-project/src/main.py
         echo "# Test Project" > test-project/README.md
         
-        # Test basic conversion
-        folder2md test-project --output test-output.md
+        # Test basic conversion with better error handling
+        if ! folder2md test-project --output test-output.md; then
+          echo "❌ ERROR: folder2md command failed!"
+          echo "Debugging information:"
+          echo "- Current directory: $(pwd)"
+          echo "- Files in test-project:"
+          ls -la test-project/
+          echo "- folder2md version:"
+          folder2md --version || echo "Version check failed"
+          exit 1
+        fi
         
         # Verify output file exists and contains expected content
-        test -f test-output.md
-        grep -q "hello world" test-output.md
-        grep -q "Test Project" test-output.md
-        echo "Basic functionality test passed"
+        if [ ! -f test-output.md ]; then
+          echo "❌ ERROR: Output file test-output.md was not created!"
+          echo "Files in current directory:"
+          ls -la
+          exit 1
+        fi
+        
+        if ! grep -q "hello world" test-output.md; then
+          echo "❌ ERROR: Output file does not contain expected Python code!"
+          echo "Content of test-output.md:"
+          cat test-output.md
+          exit 1
+        fi
+        
+        if ! grep -q "Test Project" test-output.md; then
+          echo "❌ ERROR: Output file does not contain expected README content!"
+          echo "Content of test-output.md:"
+          cat test-output.md
+          exit 1
+        fi
+        
+        echo "✅ Basic functionality test passed"
         echo "::endgroup::"
     
     - name: Test ignore file generation
@@ -143,7 +215,8 @@ jobs:
       run: |
         {
           echo "## Installation Test Summary"
-          echo "- ✅ Installation from tap completed"
+          echo "- ✅ Installation from local formula completed"
+          echo "- ✅ Simplified dependencies validation passed"
           echo "- ✅ Basic functionality tests passed"
           echo "- ✅ Ignore file generation test passed"
           echo "- ✅ Configuration file test passed"
@@ -151,10 +224,18 @@ jobs:
           echo "- ✅ Limits functionality test passed"
           echo "- ✅ Verbose mode test passed"
           echo ""
+          echo "### Key Validations"
+          echo "- ✅ Core dependencies only (click, pyyaml, rich, markdown-it-py, mdurl, pygments)"
+          echo "- ✅ No problematic dependencies (maturin, cryptography, rust, setuptools-rust)"
+          echo "- ✅ Minimal package count validation"
+          echo "- ✅ Cross-platform compatibility (macOS & Linux)"
+          echo "- ✅ Enhanced error reporting for troubleshooting"
+          echo ""
           echo "### Performance Optimizations"
           echo "- 🚀 Consolidated duplicate test jobs"
           echo "- 🚀 Added Homebrew package caching"
           echo "- 🚀 Removed redundant Homebrew installation on macOS"
           echo "- 🚀 Reduced matrix from 3 to 2 OS versions"
           echo "- 📊 Added performance timing measurements"
+          echo "- 🔍 Added detailed debugging information for failures"
         } >> "$GITHUB_STEP_SUMMARY"

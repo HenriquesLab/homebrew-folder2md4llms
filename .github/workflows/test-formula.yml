@@ -2,16 +2,24 @@ name: Test Formula
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, develop ]
   pull_request:
     branches: [ main ]
+  schedule:
+    # Run daily at 06:00 UTC to catch any upstream changes
+    - cron: '0 6 * * *'
 
 jobs:
   test-formula:
-    runs-on: macos-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        # Test on multiple macOS versions
+        os: [macos-13, macos-14]
     
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
     
     - name: Cache Homebrew packages
       uses: actions/cache@v4
@@ -25,27 +33,155 @@ jobs:
           ${{ runner.os }}-homebrew-formula-test-
           ${{ runner.os }}-homebrew-
     
-    - name: Test formula syntax
+    - name: Validate Formula syntax
       run: |
-        echo "::group::Testing formula syntax"
+        echo "::group::Formula syntax validation"
         start_time=$(date +%s)
-        brew test-bot --only-tap-syntax
+        brew audit --strict --formula ./Formula/folder2md4llms.rb
         end_time=$(date +%s)
-        echo "Syntax test completed in $((end_time - start_time)) seconds"
+        echo "Syntax validation completed in $((end_time - start_time)) seconds"
         echo "::endgroup::"
     
-    - name: Test formula installation
+    - name: Test Formula installation from source
       run: |
-        echo "::group::Testing formula installation"
+        echo "::group::Installing formula from source"
         start_time=$(date +%s)
         brew install --build-from-source ./Formula/folder2md4llms.rb
         install_time=$(date +%s)
         echo "Installation completed in $((install_time - start_time)) seconds"
+        echo "::endgroup::"
+    
+    - name: Verify installation and dependencies
+      run: |
+        echo "::group::Verifying installation"
+        # Check that the binary exists and is executable
+        which folder2md
+        folder2md --version
+        folder2md --help
+        echo "::endgroup::"
         
+        echo "::group::Validating core dependencies only"
+        # Get the installation prefix for the formula
+        FORMULA_PREFIX=$(brew --prefix folder2md4llms)
+        
+        # Check installed packages in the virtualenv
+        echo "Checking installed packages in virtualenv:"
+        "$FORMULA_PREFIX/libexec/bin/pip" list
+        
+        # Verify core dependencies are present
+        echo "Verifying core dependencies are installed:"
+        for dep in click pyyaml rich markdown-it-py mdurl pygments; do
+          if "$FORMULA_PREFIX/libexec/bin/pip" show "$dep" > /dev/null 2>&1; then
+            echo "✅ $dep is installed"
+          else
+            echo "❌ ERROR: $dep is not installed!"
+            exit 1
+          fi
+        done
+        
+        # Verify problematic dependencies are NOT installed
+        echo "Verifying problematic dependencies are NOT installed:"
+        for dep in maturin cryptography rust setuptools-rust; do
+          if "$FORMULA_PREFIX/libexec/bin/pip" show "$dep" > /dev/null 2>&1; then
+            echo "❌ ERROR: $dep should not be installed in simplified formula!"
+            exit 1
+          else
+            echo "✅ $dep is not installed (as expected)"
+          fi
+        done
+        echo "::endgroup::"
+    
+    - name: Test basic functionality
+      run: |
+        echo "::group::Testing basic functionality"
+        # Create a test directory with various file types
+        mkdir -p test_project/src test_project/docs
+        echo "print('Hello World')" > test_project/src/main.py
+        echo "# Test Project" > test_project/README.md
+        echo "# Documentation" > test_project/docs/guide.md
+        echo "temporary file" > test_project/temp.tmp
+        
+        # Test basic folder2md functionality
+        cd test_project
+        folder2md . --output test_output.md
+        
+        # Verify output file was created
+        if [ ! -f test_output.md ]; then
+          echo "❌ ERROR: Output file test_output.md was not created!"
+          exit 1
+        fi
+        
+        # Check that the output contains expected content
+        if ! grep -q "Hello World" test_output.md; then
+          echo "❌ ERROR: Output file does not contain expected Python code!"
+          exit 1
+        fi
+        
+        if ! grep -q "Test Project" test_output.md; then
+          echo "❌ ERROR: Output file does not contain expected README content!"
+          exit 1
+        fi
+        
+        echo "✅ Basic functionality test passed"
+        
+        # Test ignore file generation
+        folder2md --init-ignore
+        if [ ! -f .folder2md_ignore ]; then
+          echo "❌ ERROR: .folder2md_ignore file was not created!"
+          exit 1
+        fi
+        
+        echo "✅ Ignore file generation test passed"
+        echo "::endgroup::"
+    
+    - name: Test configuration file support
+      run: |
+        echo "::group::Testing configuration file support"
+        cd test_project
+        
+        # Create a config file
+        cat > folder2md.yaml << 'EOF'
+        output: config_test.md
+        exclude_patterns:
+          - "*.tmp"
+        include_patterns:
+          - "*.py"
+          - "*.md"
+        EOF
+        
+        # Test with config file
+        folder2md .
+        
+        # Verify config-based output was created
+        if [ ! -f config_test.md ]; then
+          echo "❌ ERROR: Config-based output file was not created!"
+          exit 1
+        fi
+        
+        # Verify temp file was excluded
+        if grep -q "temporary file" config_test.md; then
+          echo "❌ ERROR: Temp file should have been excluded!"
+          exit 1
+        fi
+        
+        echo "✅ Configuration file test passed"
+        echo "::endgroup::"
+    
+    - name: Run built-in formula tests
+      run: |
+        echo "::group::Running built-in formula tests"
+        start_time=$(date +%s)
         brew test ./Formula/folder2md4llms.rb
         end_time=$(date +%s)
-        echo "Formula test completed in $((end_time - install_time)) seconds"
-        echo "Total test time: $((end_time - start_time)) seconds"
+        echo "Built-in formula test completed in $((end_time - start_time)) seconds"
+        echo "::endgroup::"
+    
+    - name: Cleanup
+      if: always()
+      run: |
+        echo "::group::Cleanup"
+        brew uninstall folder2md4llms || true
+        rm -rf test_project || true
         echo "::endgroup::"
     
     - name: Workflow Summary
@@ -54,10 +190,20 @@ jobs:
         {
           echo "## Formula Test Summary"
           echo "- ✅ Formula syntax validation completed"
+          echo "- ✅ Simplified dependencies validation completed"
           echo "- ✅ Formula installation test completed"
-          echo "- ✅ Formula functional test completed"
+          echo "- ✅ Basic functionality test completed"
+          echo "- ✅ Configuration file test completed"
+          echo "- ✅ Built-in formula test completed"
+          echo ""
+          echo "### Validated Features"
+          echo "- Core dependencies only (no maturin, cryptography, rust)"
+          echo "- Basic file processing and output generation"
+          echo "- Configuration file support"
+          echo "- Ignore file generation"
+          echo "- Cross-platform compatibility (macOS ${{ matrix.os }})"
           echo ""
           echo "### Performance Notes"
           echo "- Using Homebrew package caching for improved performance"
-          echo "- Removed redundant Homebrew installation step"
+          echo "- Testing on multiple macOS versions"
         } >> "$GITHUB_STEP_SUMMARY"

@@ -1,5 +1,6 @@
 # Homebrew Tap for folder2md4llms
 
+[![CI](https://github.com/HenriquesLab/homebrew-folder2md4llms/actions/workflows/ci.yml/badge.svg)](https://github.com/HenriquesLab/homebrew-folder2md4llms/actions/workflows/ci.yml)
 [![Test Formula](https://github.com/HenriquesLab/homebrew-folder2md4llms/actions/workflows/test-formula.yml/badge.svg)](https://github.com/HenriquesLab/homebrew-folder2md4llms/actions/workflows/test-formula.yml)
 [![Test Installation](https://github.com/HenriquesLab/homebrew-folder2md4llms/actions/workflows/test-installation.yml/badge.svg)](https://github.com/HenriquesLab/homebrew-folder2md4llms/actions/workflows/test-installation.yml)
 
@@ -78,13 +79,36 @@ clipboard: false
 verbose: true
 ```
 
+## Simplified Formula
+
+This tap now uses a **simplified formula** that includes only core dependencies for maximum reliability:
+
+### ✅ Core Dependencies Only
+- `click` (CLI framework)
+- `pyyaml` (YAML configuration)
+- `rich` (rich text formatting)
+- `markdown-it-py` (markdown processing)
+- `mdurl` (URL processing)
+- `pygments` (syntax highlighting)
+
+### ❌ No Problematic Dependencies
+- No `maturin` (Rust build tool)
+- No `cryptography` (complex C dependencies)
+- No `rust` compiler requirements
+- No `setuptools-rust` build dependencies
+
+This eliminates installation issues related to Rust compilation and complex C dependencies, making the installation process much more reliable across different systems.
+
 ## Testing
 
 This tap includes comprehensive GitHub Actions workflows to test:
-- Formula syntax and installation
-- Cross-platform compatibility (macOS and Linux)
-- Core functionality and edge cases
-- Weekly regression testing
+- **CI**: Basic formula validation and syntax checking
+- **Formula Testing**: Multi-platform installation testing (macOS 13, macOS 14)
+- **Installation Testing**: Cross-platform functionality testing (macOS and Linux)
+- **Dependency Validation**: Ensures only core dependencies are installed
+- **Functionality Testing**: Comprehensive feature testing including configuration files, ignore patterns, and output generation
+- **Issue Handling**: Automated support for installation issues
+- **Daily Regression Testing**: Automatic testing to catch upstream changes
 
 ## About
 
@@ -112,9 +136,19 @@ This formula was generated using homebrew-pypi-poet and includes all Python depe
 ### Formula Details
 
 - **Python Version**: Requires Python 3.11+
-- **Dependencies**: All Python packages are bundled as resources
+- **Dependencies**: Only core Python packages are bundled as resources (simplified approach)
 - **Virtual Environment**: Uses Homebrew's virtualenv system for isolation
 - **Platform Support**: macOS (primary), Linux (via Homebrew on Linux)
+- **Installation Method**: Simplified formula with minimal dependencies for maximum reliability
+
+### Quality Assurance
+
+The simplified formula includes:
+- **Automated Testing**: CI workflows test installation on multiple platforms
+- **Dependency Validation**: Ensures no problematic dependencies are installed
+- **Functionality Testing**: Comprehensive testing of core features
+- **Issue Automation**: Automated responses to common installation issues
+- **Regular Monitoring**: Daily checks for upstream changes
 
 ## Support
 
