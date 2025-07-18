@@ -41,6 +41,11 @@ jobs:
       run: |
         echo "::group::Installing folder2md4llms from local formula"
         start_time=$(date +%s)
+        
+        # Set environment variable to use local formula instead of API
+        export HOMEBREW_NO_INSTALL_FROM_API=1
+        
+        # Install from local formula file
         brew install --formula ./Formula/folder2md4llms.rb
         end_time=$(date +%s)
         echo "Installation completed in $((end_time - start_time)) seconds"

@@ -37,7 +37,25 @@ jobs:
       run: |
         echo "::group::Formula syntax validation"
         start_time=$(date +%s)
-        brew audit --strict --formula ./Formula/folder2md4llms.rb
+        
+        # Set environment variable to use local formula instead of API
+        export HOMEBREW_NO_INSTALL_FROM_API=1
+        
+        # Create a temporary tap for formula validation
+        echo "Creating temporary tap for formula validation..."
+        brew tap-new test-folder2md4llms/tap --no-git
+        
+        # Copy formula to temporary tap
+        cp ./Formula/folder2md4llms.rb $(brew --repository)/Library/Taps/test-folder2md4llms/homebrew-tap/Formula/
+        
+        # Run audit on the formula by name
+        echo "Running formula audit..."
+        brew audit --strict --formula test-folder2md4llms/tap/folder2md4llms
+        
+        # Clean up temporary tap
+        echo "Cleaning up temporary tap..."
+        brew untap test-folder2md4llms/tap
+        
         end_time=$(date +%s)
         echo "Syntax validation completed in $((end_time - start_time)) seconds"
         echo "::endgroup::"
@@ -46,6 +64,11 @@ jobs:
       run: |
         echo "::group::Installing formula from source"
         start_time=$(date +%s)
+        
+        # Set environment variable to use local formula instead of API
+        export HOMEBREW_NO_INSTALL_FROM_API=1
+        
+        # Install from local formula file
         brew install --build-from-source ./Formula/folder2md4llms.rb
         install_time=$(date +%s)
         echo "Installation completed in $((install_time - start_time)) seconds"
@@ -171,7 +194,12 @@ jobs:
       run: |
         echo "::group::Running built-in formula tests"
         start_time=$(date +%s)
-        brew test ./Formula/folder2md4llms.rb
+        
+        # Set environment variable to use local formula instead of API
+        export HOMEBREW_NO_INSTALL_FROM_API=1
+        
+        # Run tests on the locally installed formula
+        brew test folder2md4llms
         end_time=$(date +%s)
         echo "Built-in formula test completed in $((end_time - start_time)) seconds"
         echo "::endgroup::"
