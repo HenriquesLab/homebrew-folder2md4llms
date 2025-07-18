@@ -70,7 +70,7 @@ jobs:
         start_time=$(date +%s)
         
         # Create a temporary tap for formula validation
-        TAP_NAME="test-folder2md4llms-$(date +%s)"
+        TAP_NAME="test-user/folder2md4llms-$(date +%s)"
         echo "Creating temporary tap: $TAP_NAME"
         brew tap-new "$TAP_NAME" --no-git
         
