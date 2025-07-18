@@ -9,6 +9,9 @@ class Folder2md4llms < Formula
 
   depends_on "python@3.11"
 
+  uses_from_macos "libxml2"
+  uses_from_macos "libxslt"
+
   resource "anyio" do
     url "https://files.pythonhosted.org/packages/95/7d/4c1bd541d4dffa1b52bd83fb8527089e097a106fc90b467a7313b105f840/anyio-4.9.0.tar.gz"
     sha256 "673c0c244e15788651a4ff38710fea9675823028a6f08a5eda409e0c9840a028"
