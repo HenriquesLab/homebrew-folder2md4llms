@@ -7,11 +7,13 @@ class Folder2md4llms < Formula
   sha256 "77010763c38b48904a330dbd46eefd0d287e0a058c5000ac04ae81b1ba8e2ed8"
   license "MIT"
 
+  depends_on "cmake"
   depends_on "freetype"
   depends_on "jpeg-turbo"
   depends_on "libpng"
   depends_on "libtiff"
   depends_on "python@3.11"
+  depends_on "zeromq"
   depends_on "zlib"
 
   uses_from_macos "libxml2"
@@ -101,15 +103,6 @@ class Folder2md4llms < Formula
     sha256 "630159c9f4dbea161a6a2205c3011cc4f18ff381b189fff48bb39b9bf26ae608"
   end
 
-  resource "jupyter-client" do
-    url "https://files.pythonhosted.org/packages/71/22/bf9f12fdaeae18019a468b68952a60fe6dbab5d67cd2a103cac7659b41ca/jupyter_client-8.6.3.tar.gz"
-    sha256 "35b3a0947c4a6e9d589eb97d7d4cd5e90f910ee73101611f01283732bd6d9419"
-  end
-
-  resource "jupyter-core" do
-    url "https://files.pythonhosted.org/packages/99/1b/72906d554acfeb588332eaaa6f61577705e9ec752ddb486f302dafa292d9/jupyter_core-5.8.1.tar.gz"
-    sha256 "0a5f9706f70e64786b75acba995988915ebd4601c8a52e534a40b51c95f59941"
-  end
 
   resource "lxml" do
     url "https://files.pythonhosted.org/packages/c5/ed/60eb6fa2923602fba988d9ca7c5cdbd7cf25faa795162ed538b527a35411/lxml-6.0.0.tar.gz"
@@ -141,20 +134,6 @@ class Folder2md4llms < Formula
     sha256 "a7035c21782b2becb6be62f8f25d3df81ccb4d6fa477a6525b15af06539f02a0"
   end
 
-  resource "nbclient" do
-    url "https://files.pythonhosted.org/packages/87/66/7ffd18d58eae90d5721f9f39212327695b749e23ad44b3881744eaf4d9e8/nbclient-0.10.2.tar.gz"
-    sha256 "90b7fc6b810630db87a6d0c2250b1f0ab4cf4d3c27a299b0cde78a4ed3fd9193"
-  end
-
-  resource "nbconvert" do
-    url "https://files.pythonhosted.org/packages/a3/59/f28e15fc47ffb73af68a8d9b47367a8630d76e97ae85ad18271b9db96fdf/nbconvert-7.16.6.tar.gz"
-    sha256 "576a7e37c6480da7b8465eefa66c17844243816ce1ccc372633c6b71c3c0f582"
-  end
-
-  resource "nbformat" do
-    url "https://files.pythonhosted.org/packages/6d/fd/91545e604bc3dad7dca9ed03284086039b294c6b3d75c0d2fa45f9e9caf3/nbformat-5.10.4.tar.gz"
-    sha256 "322168b14f937a5d11362988ecac2a4952d3d8e3a2cbeb2319584631226d5b3a"
-  end
 
   resource "openpyxl" do
     url "https://files.pythonhosted.org/packages/3d/f9/88d94a75de065ea32619465d2f77b29a0469500e99012523b91cc4141cd1/openpyxl-3.1.5.tar.gz"
@@ -226,10 +205,6 @@ class Folder2md4llms < Formula
     sha256 "d584d9ec91ad65861cc08d42e834324ef890a082e591037abe114850ff7bbc3e"
   end
 
-  resource "pyzmq" do
-    url "https://files.pythonhosted.org/packages/f1/06/50a4e9648b3e8b992bef8eb632e457307553a89d294103213cfd47b3da69/pyzmq-27.0.0.tar.gz"
-    sha256 "b1f08eeb9ce1510e6939b6e5dcd46a17765e2333daae78ecf4606808442e52cf"
-  end
 
   resource "referencing" do
     url "https://files.pythonhosted.org/packages/2f/db/98b5c277be99dd18bfd91dd04e1b759cad18d1a338188c936e92f921c7e2/referencing-0.36.2.tar.gz"
@@ -319,6 +294,10 @@ class Folder2md4llms < Formula
     ENV.append "LDFLAGS", "-L#{Formula["libtiff"].opt_lib}"
     ENV.append "LDFLAGS", "-L#{Formula["freetype"].opt_lib}"
     ENV.append "LDFLAGS", "-L#{Formula["zlib"].opt_lib}"
+
+    # Set ZeroMQ environment variables to use system zeromq
+    ENV["ZMQ_PREFIX"] = Formula["zeromq"].opt_prefix
+    ENV["PYZMQ_NO_BUNDLE"] = "1"
 
     virtualenv_install_with_resources
   end
