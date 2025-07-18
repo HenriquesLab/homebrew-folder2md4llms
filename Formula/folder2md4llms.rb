@@ -7,21 +7,7 @@ class Folder2md4llms < Formula
   sha256 "77010763c38b48904a330dbd46eefd0d287e0a058c5000ac04ae81b1ba8e2ed8"
   license "MIT"
 
-  depends_on "cmake"
-  depends_on "freetype"
-  depends_on "jpeg-turbo"
-  depends_on "libpng"
-  depends_on "libtiff"
   depends_on "python@3.11"
-  depends_on "zeromq"
-  depends_on "zlib"
-
-  uses_from_macos "libxml2"
-  uses_from_macos "libxslt"
-
-  on_linux do
-    depends_on "pkg-config"
-  end
 
   resource "anyio" do
     url "https://files.pythonhosted.org/packages/95/7d/4c1bd541d4dffa1b52bd83fb8527089e097a106fc90b467a7313b105f840/anyio-4.9.0.tar.gz"
@@ -243,19 +229,9 @@ class Folder2md4llms < Formula
     sha256 "10c0972f6fc0fbee87c3edb76549357415e94548c1ae10ebccdea16fb404a9b7"
   end
 
-  resource "tornado" do
-    url "https://files.pythonhosted.org/packages/51/89/c72771c81d25d53fe33e3dca61c233b665b2780f21820ba6fd2c6793c12b/tornado-6.5.1.tar.gz"
-    sha256 "84ceece391e8eb9b2b95578db65e920d2a61070260594819589609ba9bc6308c"
-  end
-
   resource "tqdm" do
     url "https://files.pythonhosted.org/packages/a8/4b/29b4ef32e036bb34e4ab51796dd745cdba7ed47ad142a9f4a1eb8e0c744d/tqdm-4.67.1.tar.gz"
     sha256 "f8aef9c52c08c13a65f30ea34f4e5aac3fd1a34959879d7e59e63027286627f2"
-  end
-
-  resource "traitlets" do
-    url "https://files.pythonhosted.org/packages/eb/79/72064e6a701c2183016abbbfedaba506d81e30e232a68c9f0d6f6fcd1574/traitlets-5.14.3.tar.gz"
-    sha256 "9ed0579d3502c94b4b3732ac120375cda96f923114522847de4b3bb98b96b6b7"
   end
 
   resource "typing-extensions" do
@@ -274,28 +250,6 @@ class Folder2md4llms < Formula
   end
 
   def install
-    ENV.prepend_path "PKG_CONFIG_PATH", Formula["jpeg-turbo"].opt_lib/"pkgconfig"
-    ENV.prepend_path "PKG_CONFIG_PATH", Formula["libpng"].opt_lib/"pkgconfig"
-    ENV.prepend_path "PKG_CONFIG_PATH", Formula["libtiff"].opt_lib/"pkgconfig"
-    ENV.prepend_path "PKG_CONFIG_PATH", Formula["freetype"].opt_lib/"pkgconfig"
-    ENV.prepend_path "PKG_CONFIG_PATH", Formula["zlib"].opt_lib/"pkgconfig"
-
-    ENV.append_to_cflags "-I#{Formula["jpeg-turbo"].opt_include}"
-    ENV.append_to_cflags "-I#{Formula["libpng"].opt_include}"
-    ENV.append_to_cflags "-I#{Formula["libtiff"].opt_include}"
-    ENV.append_to_cflags "-I#{Formula["freetype"].opt_include}"
-    ENV.append_to_cflags "-I#{Formula["zlib"].opt_include}"
-
-    ENV.append "LDFLAGS", "-L#{Formula["jpeg-turbo"].opt_lib}"
-    ENV.append "LDFLAGS", "-L#{Formula["libpng"].opt_lib}"
-    ENV.append "LDFLAGS", "-L#{Formula["libtiff"].opt_lib}"
-    ENV.append "LDFLAGS", "-L#{Formula["freetype"].opt_lib}"
-    ENV.append "LDFLAGS", "-L#{Formula["zlib"].opt_lib}"
-
-    # Set ZeroMQ environment variables to use system zeromq
-    ENV["ZMQ_PREFIX"] = Formula["zeromq"].opt_prefix
-    ENV["PYZMQ_NO_BUNDLE"] = "1"
-
     virtualenv_install_with_resources
   end
 
