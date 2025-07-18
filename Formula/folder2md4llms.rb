@@ -7,6 +7,7 @@ class Folder2md4llms < Formula
   sha256 "77010763c38b48904a330dbd46eefd0d287e0a058c5000ac04ae81b1ba8e2ed8"
   license "MIT"
 
+  depends_on "libyaml"
   depends_on "python@3.11"
 
   # Core dependencies only - let pip handle the rest
