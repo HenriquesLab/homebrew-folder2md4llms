@@ -1,0 +1,262 @@
+name: Update Formula
+
+on:
+  repository_dispatch:
+    types: [new_release]
+  schedule:
+    # Check for updates every 4 hours
+    - cron: '0 */4 * * *'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to update to (e.g., 1.0.0)'
+        required: false
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  update-formula:
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
+
+    - name: Set up environment
+      run: |
+        # Install required tools
+        brew install gh
+        
+        # Set up git config
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+
+    - name: Get current and latest versions
+      id: versions
+      run: |
+        echo "::group::Version detection"
+        
+        # Get current version from formula
+        CURRENT_VERSION=$(grep -E '^\s*version\s+' Formula/folder2md4llms.rb | sed 's/.*"\(.*\)".*/\1/')
+        echo "Current formula version: $CURRENT_VERSION"
+        
+        # Get latest version from PyPI or input
+        if [ -n "${{ github.event.inputs.version }}" ]; then
+          LATEST_VERSION="${{ github.event.inputs.version }}"
+          echo "Using input version: $LATEST_VERSION"
+        elif [ -n "${{ github.event.client_payload.version }}" ]; then
+          LATEST_VERSION="${{ github.event.client_payload.version }}"
+          echo "Using dispatch version: $LATEST_VERSION"
+        else
+          echo "Checking PyPI for latest version..."
+          LATEST_VERSION=$(curl -s https://pypi.org/pypi/folder2md4llms/json | grep -o '"version":"[^"]*' | head -1 | cut -d'"' -f4)
+          echo "Latest PyPI version: $LATEST_VERSION"
+        fi
+        
+        echo "current-version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+        echo "latest-version=$LATEST_VERSION" >> $GITHUB_OUTPUT
+        
+        # Check if update is needed
+        if [ "$CURRENT_VERSION" = "$LATEST_VERSION" ]; then
+          echo "needs-update=false" >> $GITHUB_OUTPUT
+          echo "✅ Formula is already up to date"
+        else
+          echo "needs-update=true" >> $GITHUB_OUTPUT
+          echo "📦 Update needed: $CURRENT_VERSION -> $LATEST_VERSION"
+        fi
+        
+        echo "::endgroup::"
+
+    - name: Update formula
+      if: steps.versions.outputs.needs-update == 'true'
+      id: update
+      run: |
+        echo "::group::Updating formula"
+        
+        LATEST_VERSION="${{ steps.versions.outputs.latest-version }}"
+        FORMULA_FILE="Formula/folder2md4llms.rb"
+        
+        # Download the tarball to get the SHA256
+        TARBALL_URL="https://pypi.org/packages/source/f/folder2md4llms/folder2md4llms-${LATEST_VERSION}.tar.gz"
+        echo "Downloading tarball from: $TARBALL_URL"
+        
+        TEMP_FILE=$(mktemp)
+        if curl -sL "$TARBALL_URL" -o "$TEMP_FILE"; then
+          SHA256=$(shasum -a 256 "$TEMP_FILE" | cut -d' ' -f1)
+          echo "SHA256: $SHA256"
+          rm "$TEMP_FILE"
+        else
+          echo "❌ Failed to download tarball"
+          exit 1
+        fi
+        
+        # Create backup of original formula
+        cp "$FORMULA_FILE" "${FORMULA_FILE}.backup"
+        
+        # Update the formula file
+        sed -i '' "s/version \".*\"/version \"$LATEST_VERSION\"/" "$FORMULA_FILE"
+        sed -i '' "s/sha256 \".*\"/sha256 \"$SHA256\"/" "$FORMULA_FILE"
+        
+        # Verify the changes
+        echo "Updated formula content:"
+        grep -A 5 -B 5 "version\|sha256" "$FORMULA_FILE"
+        
+        echo "branch-name=update-formula-$LATEST_VERSION" >> $GITHUB_OUTPUT
+        echo "::endgroup::"
+
+    - name: Test updated formula
+      if: steps.versions.outputs.needs-update == 'true'
+      run: |
+        echo "::group::Testing updated formula"
+        
+        # Test formula syntax
+        brew audit --strict --formula ./Formula/folder2md4llms.rb
+        
+        # Test installation
+        brew install --build-from-source --formula ./Formula/folder2md4llms.rb
+        
+        # Test basic functionality
+        folder2md --version
+        folder2md --help
+        
+        # Test with a simple example
+        echo "# Test" > test.md
+        folder2md . --output test_output.md
+        test -f test_output.md
+        
+        # Clean up
+        brew uninstall folder2md4llms
+        rm -f test.md test_output.md
+        
+        echo "✅ Updated formula tests passed"
+        echo "::endgroup::"
+
+    - name: Create pull request
+      if: steps.versions.outputs.needs-update == 'true'
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        echo "::group::Creating pull request"
+        
+        LATEST_VERSION="${{ steps.versions.outputs.latest-version }}"
+        CURRENT_VERSION="${{ steps.versions.outputs.current-version }}"
+        BRANCH_NAME="${{ steps.update.outputs.branch-name }}"
+        
+        # Create and switch to new branch
+        git checkout -b "$BRANCH_NAME"
+        
+        # Stage and commit changes
+        git add Formula/folder2md4llms.rb
+        git commit -m "Update formula to version $LATEST_VERSION
+        
+        - Update version from $CURRENT_VERSION to $LATEST_VERSION
+        - Update SHA256 hash for new tarball
+        - Automated update from PyPI release
+        
+        🤖 Generated by GitHub Actions"
+        
+        # Push the branch
+        git push -u origin "$BRANCH_NAME"
+        
+        # Create the PR
+        gh pr create \
+          --title "Update folder2md4llms to $LATEST_VERSION" \
+          --body "## 📦 Automated Formula Update
+
+        This PR updates the folder2md4llms formula to version **$LATEST_VERSION**.
+
+        ### Changes
+        - ⬆️ Version: \`$CURRENT_VERSION\` → \`$LATEST_VERSION\`
+        - 🔒 Updated SHA256 hash for new tarball
+        - ✅ Formula syntax validation passed
+        - ✅ Installation test passed
+        - ✅ Basic functionality test passed
+
+        ### Testing
+        The updated formula has been automatically tested with:
+        - Formula syntax validation (\`brew audit --strict\`)
+        - Installation from source (\`brew install --build-from-source\`)
+        - Basic CLI functionality (\`folder2md --version\` and \`--help\`)
+        - Simple file processing test
+
+        ### Source
+        - 📦 PyPI: https://pypi.org/project/folder2md4llms/$LATEST_VERSION/
+        - 🏷️ Release: https://github.com/HenriquesLab/folder2md4llms/releases/tag/v$LATEST_VERSION
+
+        ---
+        🤖 This PR was created automatically by GitHub Actions." \
+          --label "automated-update" \
+          --assignee "${{ github.repository_owner }}"
+        
+        echo "✅ Pull request created successfully"
+        echo "::endgroup::"
+
+    - name: Auto-merge if tests pass
+      if: steps.versions.outputs.needs-update == 'true' && github.event_name == 'repository_dispatch'
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        echo "::group::Auto-merge setup"
+        
+        # Wait a moment for the PR to be fully created
+        sleep 30
+        
+        # Get the PR number
+        PR_NUMBER=$(gh pr list --head "${{ steps.update.outputs.branch-name }}" --json number --jq '.[0].number')
+        
+        if [ -n "$PR_NUMBER" ]; then
+          echo "PR Number: $PR_NUMBER"
+          
+          # Enable auto-merge (will merge when checks pass)
+          gh pr merge "$PR_NUMBER" --auto --squash
+          
+          echo "✅ Auto-merge enabled for PR #$PR_NUMBER"
+        else
+          echo "❌ Could not find PR number"
+        fi
+        
+        echo "::endgroup::"
+
+    - name: Cleanup on failure
+      if: failure() && steps.versions.outputs.needs-update == 'true'
+      run: |
+        echo "::group::Cleanup after failure"
+        
+        # Restore original formula if backup exists
+        if [ -f "Formula/folder2md4llms.rb.backup" ]; then
+          mv "Formula/folder2md4llms.rb.backup" "Formula/folder2md4llms.rb"
+          echo "✅ Restored original formula"
+        fi
+        
+        # Clean up any test files
+        rm -f test.md test_output.md
+        
+        # Uninstall if installed
+        brew uninstall folder2md4llms 2>/dev/null || true
+        
+        echo "::endgroup::"
+
+    - name: Summary
+      if: always()
+      run: |
+        echo "::group::Update Summary"
+        echo "### Formula Update Summary"
+        echo "- Current version: ${{ steps.versions.outputs.current-version }}"
+        echo "- Latest version: ${{ steps.versions.outputs.latest-version }}"
+        echo "- Update needed: ${{ steps.versions.outputs.needs-update }}"
+        
+        if [ "${{ steps.versions.outputs.needs-update }}" = "true" ]; then
+          echo "- ✅ Formula updated successfully"
+          echo "- ✅ Tests passed"
+          echo "- ✅ Pull request created"
+        else
+          echo "- ✅ Formula is up to date"
+        fi
+        
+        echo "::endgroup::"

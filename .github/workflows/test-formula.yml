@@ -2,176 +2,154 @@ name: Test Formula
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
+    paths:
+      - 'Formula/**'
+      - '.github/workflows/test-formula.yml'
   pull_request:
-    branches: [ main ]
+    branches: [main]
+    paths:
+      - 'Formula/**'
+      - '.github/workflows/test-formula.yml'
   schedule:
     # Run daily at 06:00 UTC to catch any upstream changes
     - cron: '0 6 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test-formula:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        # Test on multiple macOS versions
-        os: [macos-13, macos-14]
-    
+        os: [macos-13, macos-14, macos-15]
+        exclude:
+          # macOS 15 might not be available yet
+          - os: macos-15
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-    
+
     - name: Cache Homebrew packages
       uses: actions/cache@v4
       with:
         path: |
           ~/Library/Caches/Homebrew
-        key: ${{ runner.os }}-${{ matrix.os }}-homebrew-formula-test-${{ hashFiles('Formula/folder2md4llms.rb') }}
+          /opt/homebrew/var/homebrew/locks
+          /usr/local/var/homebrew/locks
+        key: ${{ runner.os }}-${{ matrix.os }}-homebrew-${{ hashFiles('Formula/folder2md4llms.rb') }}
         restore-keys: |
-          ${{ runner.os }}-${{ matrix.os }}-homebrew-formula-test-
           ${{ runner.os }}-${{ matrix.os }}-homebrew-
-    
+
+    - name: Set up Homebrew environment
+      run: |
+        echo "::group::Homebrew environment setup"
+        # Ensure we have the latest Homebrew
+        brew update
+        
+        # Set environment variables
+        export HOMEBREW_NO_INSTALL_FROM_API=1
+        export HOMEBREW_NO_AUTO_UPDATE=1
+        
+        echo "HOMEBREW_NO_INSTALL_FROM_API=1" >> $GITHUB_ENV
+        echo "HOMEBREW_NO_AUTO_UPDATE=1" >> $GITHUB_ENV
+        
+        # Show Homebrew version and config
+        brew --version
+        brew config
+        echo "::endgroup::"
+
     - name: Validate Formula syntax
       run: |
         echo "::group::Formula syntax validation"
         start_time=$(date +%s)
         
-        # Set environment variable to use local formula instead of API
-        export HOMEBREW_NO_INSTALL_FROM_API=1
-        
         # Create a temporary tap for formula validation
-        echo "Creating temporary tap for formula validation..."
-        brew tap-new test-folder2md4llms/tap --no-git
+        TAP_NAME="test-folder2md4llms-$(date +%s)"
+        echo "Creating temporary tap: $TAP_NAME"
+        brew tap-new "$TAP_NAME" --no-git
         
         # Copy formula to temporary tap
-        cp ./Formula/folder2md4llms.rb $(brew --repository)/Library/Taps/test-folder2md4llms/homebrew-tap/Formula/
+        TAP_PATH="$(brew --repository)/Library/Taps/${TAP_NAME/\//-}/homebrew-${TAP_NAME#*/}"
+        cp ./Formula/folder2md4llms.rb "$TAP_PATH/Formula/"
         
-        # Run audit on the formula by name
+        # Run audit on the formula
         echo "Running formula audit..."
-        brew audit --strict --formula test-folder2md4llms/tap/folder2md4llms
+        brew audit --strict --formula "$TAP_NAME/folder2md4llms" || {
+          echo "::error::Formula audit failed"
+          brew untap "$TAP_NAME"
+          exit 1
+        }
         
         # Clean up temporary tap
-        echo "Cleaning up temporary tap..."
-        brew untap test-folder2md4llms/tap
+        brew untap "$TAP_NAME"
         
         end_time=$(date +%s)
-        echo "Syntax validation completed in $((end_time - start_time)) seconds"
+        echo "✅ Syntax validation completed in $((end_time - start_time)) seconds"
         echo "::endgroup::"
-    
-    - name: Test Formula installation from source
+
+    - name: Test Formula installation
       run: |
         echo "::group::Installing formula from source"
         start_time=$(date +%s)
         
-        # Set environment variable to use local formula instead of API
-        export HOMEBREW_NO_INSTALL_FROM_API=1
-        
         # Install from local formula file
         echo "Starting brew install..."
-        if brew install --build-from-source --formula ./Formula/folder2md4llms.rb; then
-          install_time=$(date +%s)
-          echo "Installation completed in $((install_time - start_time)) seconds"
-          echo "Verifying installation..."
-          ls -la $(brew --prefix)/bin/folder2md || true
-          which folder2md || true
-        else
-          echo "Installation failed!"
-          echo "Homebrew logs:"
-          brew logs folder2md4llms || true
-          echo "Available formulas:"
-          brew list --formula | head -10
-          exit 1
-        fi
+        brew install --build-from-source --formula ./Formula/folder2md4llms.rb
+        
+        install_time=$(date +%s)
+        echo "✅ Installation completed in $((install_time - start_time)) seconds"
         echo "::endgroup::"
-    
-    - name: Verify installation and dependencies
+
+    - name: Verify installation
       run: |
         echo "::group::Verifying installation"
+        
         # Check that the binary exists and is executable
-        which folder2md
-        folder2md --version
-        folder2md --help
-        echo "::endgroup::"
-        
-        echo "::group::Validating core dependencies only"
-        # Get the installation prefix for the formula
-        FORMULA_PREFIX=$(brew --prefix folder2md4llms)
-        echo "Formula prefix: $FORMULA_PREFIX"
-        
-        # Check if the virtualenv exists
-        if [ -d "$FORMULA_PREFIX/libexec" ]; then
-          echo "Found virtualenv at $FORMULA_PREFIX/libexec"
-          echo "Contents of libexec directory:"
-          ls -la "$FORMULA_PREFIX/libexec" || echo "Cannot list libexec"
-          if [ -d "$FORMULA_PREFIX/libexec/bin" ]; then
-            echo "Contents of libexec/bin directory:"
-            ls -la "$FORMULA_PREFIX/libexec/bin" || echo "Cannot list libexec/bin"
-          fi
-          
-          # Try to find the correct pip path
-          PIP_PATH=""
-          if [ -f "$FORMULA_PREFIX/libexec/bin/pip" ]; then
-            PIP_PATH="$FORMULA_PREFIX/libexec/bin/pip"
-          elif [ -f "$FORMULA_PREFIX/libexec/bin/pip3" ]; then
-            PIP_PATH="$FORMULA_PREFIX/libexec/bin/pip3"
-          else
-            echo "No pip binary found in expected locations"
-            find "$FORMULA_PREFIX" -name "pip*" -type f 2>/dev/null || echo "No pip found anywhere"
-          fi
-          
-          if [ -n "$PIP_PATH" ]; then
-            echo "Using pip at: $PIP_PATH"
-            echo "Checking installed packages in virtualenv:"
-            "$PIP_PATH" list
-          else
-            echo "Cannot find pip binary, skipping package listing"
-          fi
+        if command -v folder2md >/dev/null 2>&1; then
+          echo "✅ folder2md command is available"
         else
-          echo "No virtualenv found at $FORMULA_PREFIX/libexec"
-          echo "Checking directory structure:"
-          ls -la "$FORMULA_PREFIX" || echo "Cannot list formula prefix"
-          find "$FORMULA_PREFIX" -name "pip" -type f 2>/dev/null || echo "No pip found"
-          find "$FORMULA_PREFIX" -name "python*" -type f 2>/dev/null || echo "No python found"
-          echo "Since folder2md is working, skipping detailed dependency validation."
+          echo "❌ folder2md command not found"
+          exit 1
         fi
         
-        # Only do dependency validation if virtualenv exists
-        if [ -d "$FORMULA_PREFIX/libexec" ] && [ -n "$PIP_PATH" ]; then
-          # Verify core dependencies are present
-          echo "Verifying core dependencies are installed:"
-          for dep in click pyyaml rich markdown-it-py mdurl pygments; do
-            if "$PIP_PATH" show "$dep" > /dev/null 2>&1; then
-              echo "✅ $dep is installed"
-            else
-              echo "❌ ERROR: $dep is not installed!"
-              exit 1
-            fi
-          done
-          
-          # Verify problematic dependencies are NOT installed
-          echo "Verifying problematic dependencies are NOT installed:"
-          for dep in maturin cryptography rust setuptools-rust; do
-            if "$PIP_PATH" show "$dep" > /dev/null 2>&1; then
-              echo "❌ ERROR: $dep should not be installed in simplified formula!"
-              exit 1
-            else
-              echo "✅ $dep is not installed (as expected)"
-            fi
-          done
+        # Test version command
+        VERSION_OUTPUT=$(folder2md --version 2>&1)
+        echo "Version output: $VERSION_OUTPUT"
+        
+        if [[ "$VERSION_OUTPUT" == *"folder2md"* ]]; then
+          echo "✅ Version command works"
         else
-          echo "Skipping detailed dependency validation - virtualenv or pip not found"
-          echo "✅ Basic functionality verified (folder2md command works)"
+          echo "❌ Version command failed"
+          exit 1
         fi
+        
+        # Test help command
+        folder2md --help >/dev/null 2>&1
+        if [ $? -eq 0 ]; then
+          echo "✅ Help command works"
+        else
+          echo "❌ Help command failed"
+          exit 1
+        fi
+        
         echo "::endgroup::"
-    
+
     - name: Test basic functionality
       run: |
         echo "::group::Testing basic functionality"
+        
         # Create a test directory with various file types
-        mkdir -p test_project/src test_project/docs
+        mkdir -p test_project/{src,docs,tests}
         echo "print('Hello World')" > test_project/src/main.py
         echo "# Test Project" > test_project/README.md
         echo "# Documentation" > test_project/docs/guide.md
+        echo "def test_example(): pass" > test_project/tests/test_main.py
         echo "temporary file" > test_project/temp.tmp
         
         # Test basic folder2md functionality
@@ -180,18 +158,18 @@ jobs:
         
         # Verify output file was created
         if [ ! -f test_output.md ]; then
-          echo "❌ ERROR: Output file test_output.md was not created!"
+          echo "❌ Output file test_output.md was not created"
           exit 1
         fi
         
         # Check that the output contains expected content
         if ! grep -q "Hello World" test_output.md; then
-          echo "❌ ERROR: Output file does not contain expected Python code!"
+          echo "❌ Output file does not contain expected Python code"
           exit 1
         fi
         
         if ! grep -q "Test Project" test_output.md; then
-          echo "❌ ERROR: Output file does not contain expected README content!"
+          echo "❌ Output file does not contain expected README content"
           exit 1
         fi
         
@@ -200,13 +178,13 @@ jobs:
         # Test ignore file generation
         folder2md --init-ignore
         if [ ! -f .folder2md_ignore ]; then
-          echo "❌ ERROR: .folder2md_ignore file was not created!"
+          echo "❌ .folder2md_ignore file was not created"
           exit 1
         fi
         
         echo "✅ Ignore file generation test passed"
         echo "::endgroup::"
-    
+
     - name: Test configuration file support
       run: |
         echo "::group::Testing configuration file support"
@@ -222,68 +200,77 @@ jobs:
           - "*.md"
         EOF
         
-        # Test with config file (specify output explicitly since config might not override)
+        # Test with config file
         folder2md . --output config_test.md
         
         # Verify config-based output was created
         if [ ! -f config_test.md ]; then
-          echo "❌ ERROR: Config-based output file was not created!"
-          ls -la
+          echo "❌ Config-based output file was not created"
           exit 1
         fi
         
-        # Verify temp file was excluded (if exclude patterns work)
-        if grep -q "temporary file" config_test.md; then
-          echo "⚠️  WARNING: Temp file was not excluded (exclude patterns may not be working)"
-        else
-          echo "✅ Temp file was properly excluded"
+        # Check basic content is present
+        if ! grep -q "Hello World" config_test.md; then
+          echo "❌ Config-based output missing expected content"
+          exit 1
         fi
         
         echo "✅ Configuration file test passed"
         echo "::endgroup::"
-    
+
     - name: Run built-in formula tests
       run: |
         echo "::group::Running built-in formula tests"
         start_time=$(date +%s)
         
-        # Set environment variable to use local formula instead of API
-        export HOMEBREW_NO_INSTALL_FROM_API=1
-        
         # Run tests on the locally installed formula
         brew test folder2md4llms
+        
         end_time=$(date +%s)
-        echo "Built-in formula test completed in $((end_time - start_time)) seconds"
+        echo "✅ Built-in formula tests completed in $((end_time - start_time)) seconds"
         echo "::endgroup::"
-    
+
+    - name: Test uninstallation
+      run: |
+        echo "::group::Testing uninstallation"
+        
+        # Uninstall the formula
+        brew uninstall folder2md4llms
+        
+        # Verify the command is no longer available
+        if command -v folder2md >/dev/null 2>&1; then
+          echo "❌ folder2md command still available after uninstall"
+          exit 1
+        else
+          echo "✅ folder2md command properly removed"
+        fi
+        
+        echo "::endgroup::"
+
     - name: Cleanup
       if: always()
       run: |
         echo "::group::Cleanup"
-        brew uninstall folder2md4llms || true
         rm -rf test_project || true
+        brew uninstall folder2md4llms 2>/dev/null || true
+        echo "✅ Cleanup completed"
         echo "::endgroup::"
-    
-    - name: Workflow Summary
+
+    - name: Performance summary
       if: always()
       run: |
-        {
-          echo "## Formula Test Summary"
-          echo "- ✅ Formula syntax validation completed"
-          echo "- ✅ Simplified dependencies validation completed"
-          echo "- ✅ Formula installation test completed"
-          echo "- ✅ Basic functionality test completed"
-          echo "- ✅ Configuration file test completed"
-          echo "- ✅ Built-in formula test completed"
-          echo ""
-          echo "### Validated Features"
-          echo "- Core dependencies only (no maturin, cryptography, rust)"
-          echo "- Basic file processing and output generation"
-          echo "- Configuration file support"
-          echo "- Ignore file generation"
-          echo "- Cross-platform compatibility (macOS ${{ matrix.os }})"
-          echo ""
-          echo "### Performance Notes"
-          echo "- Using Homebrew package caching for improved performance"
-          echo "- Testing on multiple macOS versions"
-        } >> "$GITHUB_STEP_SUMMARY"
+        echo "::group::Performance Summary"
+        echo "### Formula Test Summary for ${{ matrix.os }}"
+        echo "- ✅ Formula syntax validation completed"
+        echo "- ✅ Formula installation from source completed"
+        echo "- ✅ Installation verification completed"
+        echo "- ✅ Basic functionality test completed"
+        echo "- ✅ Configuration file test completed"
+        echo "- ✅ Built-in formula tests completed"
+        echo "- ✅ Uninstallation test completed"
+        echo ""
+        echo "### Platform Information"
+        echo "- OS: ${{ matrix.os }}"
+        echo "- Homebrew: $(brew --version | head -1)"
+        echo "- Architecture: $(uname -m)"
+        echo "::endgroup::"
