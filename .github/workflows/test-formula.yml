@@ -76,6 +76,10 @@ jobs:
         
         # Copy formula to temporary tap
         TAP_PATH="$(brew --repository)/Library/Taps/${TAP_NAME/\//-}/homebrew-${TAP_NAME#*/}"
+        echo "Tap path: $TAP_PATH"
+        
+        # Ensure Formula directory exists
+        mkdir -p "$TAP_PATH/Formula"
         cp ./Formula/folder2md4llms.rb "$TAP_PATH/Formula/"
         
         # Run audit on the formula
@@ -91,6 +95,36 @@ jobs:
         
         end_time=$(date +%s)
         echo "✅ Syntax validation completed in $((end_time - start_time)) seconds"
+        echo "::endgroup::"
+
+    - name: Test real-world tap usage
+      run: |
+        echo "::group::Testing real-world tap usage"
+        
+        # Test the actual tap command that users would run
+        echo "Testing: brew tap henriqueslab/folder2md4llms"
+        
+        # Create a temporary tap with the real name structure
+        REAL_TAP_NAME="henriqueslab/folder2md4llms"
+        echo "Creating tap: $REAL_TAP_NAME"
+        brew tap-new "$REAL_TAP_NAME" --no-git
+        
+        # Copy formula to the real tap structure
+        REAL_TAP_PATH="$(brew --repository)/Library/Taps/henriqueslab/homebrew-folder2md4llms"
+        echo "Real tap path: $REAL_TAP_PATH"
+        
+        # Ensure Formula directory exists
+        mkdir -p "$REAL_TAP_PATH/Formula"
+        cp ./Formula/folder2md4llms.rb "$REAL_TAP_PATH/Formula/"
+        
+        # Test that brew can find the formula
+        echo "Testing formula visibility..."
+        brew search folder2md4llms
+        
+        # Clean up real tap
+        brew untap "$REAL_TAP_NAME"
+        
+        echo "✅ Real-world tap test completed"
         echo "::endgroup::"
 
     - name: Test Formula installation
@@ -262,6 +296,7 @@ jobs:
         echo "::group::Performance Summary"
         echo "### Formula Test Summary for ${{ matrix.os }}"
         echo "- ✅ Formula syntax validation completed"
+        echo "- ✅ Real-world tap usage test completed"
         echo "- ✅ Formula installation from source completed"
         echo "- ✅ Installation verification completed"
         echo "- ✅ Basic functionality test completed"
