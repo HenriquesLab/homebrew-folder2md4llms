@@ -127,10 +127,21 @@ jobs:
     - name: Handle existing Python installations
       run: |
         echo "::group::Handling existing Python installations"
-        # Force link Python if it exists to avoid conflicts
-        brew link --overwrite python@3.11 || true
-        brew link --overwrite python@3.12 || true
-        brew link --overwrite python@3.13 || true
+        # Unlink any existing Python installations to avoid conflicts
+        for python_version in python@3.11 python@3.12 python@3.13; do
+          if brew list --formula | grep -q "^${python_version}$"; then
+            echo "Unlinking existing ${python_version}..."
+            brew unlink ${python_version} || true
+          fi
+        done
+        
+        # Remove conflicting symlinks if they exist
+        for file in 2to3-3.11 idle3.11 pydoc3.11 python3.11 python3.11-config; do
+          if [ -L "/usr/local/bin/${file}" ]; then
+            echo "Removing conflicting symlink: /usr/local/bin/${file}"
+            rm -f "/usr/local/bin/${file}" || true
+          fi
+        done
         echo "::endgroup::"
 
     - name: Test Formula installation
