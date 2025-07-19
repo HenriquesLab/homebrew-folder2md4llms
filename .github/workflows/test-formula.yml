@@ -26,10 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-13, macos-14, macos-15]
-        exclude:
-          # macOS 15 might not be available yet
-          - os: macos-15
+        os: [macos-13, macos-14]
 
     steps:
     - name: Checkout repository
