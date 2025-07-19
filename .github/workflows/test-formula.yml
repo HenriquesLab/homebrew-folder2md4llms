@@ -124,6 +124,15 @@ jobs:
         echo "✅ Real-world tap test completed"
         echo "::endgroup::"
 
+    - name: Handle existing Python installations
+      run: |
+        echo "::group::Handling existing Python installations"
+        # Force link Python if it exists to avoid conflicts
+        brew link --overwrite python@3.11 || true
+        brew link --overwrite python@3.12 || true
+        brew link --overwrite python@3.13 || true
+        echo "::endgroup::"
+
     - name: Test Formula installation
       run: |
         echo "::group::Installing formula from source"
