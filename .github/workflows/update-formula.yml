@@ -132,7 +132,7 @@ jobs:
         echo "::group::Testing updated formula"
         
         # Test formula syntax
-        brew audit --strict folder2md4llms
+        brew audit --strict --formula ./Formula/folder2md4llms.rb
         
         # Test installation
         brew install --build-from-source --formula ./Formula/folder2md4llms.rb
