@@ -134,7 +134,7 @@ jobs:
         # Test installation first (this will validate the formula)
         brew install --build-from-source --formula ./Formula/folder2md4llms.rb
         
-        # Test formula syntax (using installed formula name)
+        # Test formula syntax (audit installed formula by name)
         brew audit --strict folder2md4llms
         
         # Test basic functionality
