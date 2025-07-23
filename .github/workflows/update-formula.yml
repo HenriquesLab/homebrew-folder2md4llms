@@ -87,9 +87,9 @@ jobs:
         echo "Getting package info from PyPI..."
         PYPI_DATA=$(curl -s "https://pypi.org/pypi/folder2md4llms/$LATEST_VERSION/json")
         
-        # Extract the tarball URL and SHA256 from PyPI API
-        TARBALL_URL=$(echo "$PYPI_DATA" | grep -o '"url":"[^"]*\.tar\.gz"' | head -1 | cut -d'"' -f4)
-        SHA256=$(echo "$PYPI_DATA" | grep -A5 '"url":"[^"]*\.tar\.gz"' | grep '"sha256"' | head -1 | cut -d'"' -f4)
+        # Extract the tarball URL and SHA256 from PyPI API using jq-like parsing
+        TARBALL_URL=$(echo "$PYPI_DATA" | python3 -c "import sys, json; data = json.load(sys.stdin); files = [f for f in data['urls'] if f['filename'].endswith('.tar.gz')]; print(files[0]['url'] if files else '')")
+        SHA256=$(echo "$PYPI_DATA" | python3 -c "import sys, json; data = json.load(sys.stdin); files = [f for f in data['urls'] if f['filename'].endswith('.tar.gz')]; print(files[0]['digests']['sha256'] if files else '')")
         
         if [ -z "$TARBALL_URL" ] || [ -z "$SHA256" ]; then
           echo "❌ Failed to get package info from PyPI API"
@@ -132,7 +132,7 @@ jobs:
         echo "::group::Testing updated formula"
         
         # Test formula syntax
-        brew audit --strict --formula ./Formula/folder2md4llms.rb
+        brew audit --strict folder2md4llms
         
         # Test installation
         brew install --build-from-source --formula ./Formula/folder2md4llms.rb
