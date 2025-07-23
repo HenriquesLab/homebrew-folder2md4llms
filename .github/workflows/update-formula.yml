@@ -131,11 +131,11 @@ jobs:
       run: |
         echo "::group::Testing updated formula"
         
-        # Test formula syntax
-        brew audit --strict --formula ./Formula/folder2md4llms.rb
-        
-        # Test installation
+        # Test installation first (this will validate the formula)
         brew install --build-from-source --formula ./Formula/folder2md4llms.rb
+        
+        # Test formula syntax (using installed formula name)
+        brew audit --strict folder2md4llms
         
         # Test basic functionality
         folder2md --version
