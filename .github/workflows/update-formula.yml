@@ -20,6 +20,7 @@ concurrency:
 jobs:
   update-formula:
     runs-on: macos-latest
+    timeout-minutes: 45
     
     steps:
     - name: Checkout repository
@@ -83,17 +84,32 @@ jobs:
         FORMULA_FILE="Formula/folder2md4llms.rb"
         
         # Download the tarball to get the SHA256
-        TARBALL_URL="https://pypi.org/packages/source/f/folder2md4llms/folder2md4llms-${LATEST_VERSION}.tar.gz"
-        echo "Downloading tarball from: $TARBALL_URL"
+        echo "Getting package info from PyPI..."
+        PYPI_DATA=$(curl -s "https://pypi.org/pypi/folder2md4llms/$LATEST_VERSION/json")
         
-        TEMP_FILE=$(mktemp)
-        if curl -sL "$TARBALL_URL" -o "$TEMP_FILE"; then
-          SHA256=$(shasum -a 256 "$TEMP_FILE" | cut -d' ' -f1)
-          echo "SHA256: $SHA256"
-          rm "$TEMP_FILE"
+        # Extract the tarball URL and SHA256 from PyPI API
+        TARBALL_URL=$(echo "$PYPI_DATA" | grep -o '"url":"[^"]*\.tar\.gz"' | head -1 | cut -d'"' -f4)
+        SHA256=$(echo "$PYPI_DATA" | grep -A5 '"url":"[^"]*\.tar\.gz"' | grep '"sha256"' | head -1 | cut -d'"' -f4)
+        
+        if [ -z "$TARBALL_URL" ] || [ -z "$SHA256" ]; then
+          echo "❌ Failed to get package info from PyPI API"
+          echo "Falling back to manual download..."
+          
+          TARBALL_URL="https://files.pythonhosted.org/packages/source/f/folder2md4llms/folder2md4llms-${LATEST_VERSION}.tar.gz"
+          echo "Downloading tarball from: $TARBALL_URL"
+          
+          TEMP_FILE=$(mktemp)
+          if curl -sL "$TARBALL_URL" -o "$TEMP_FILE"; then
+            SHA256=$(shasum -a 256 "$TEMP_FILE" | cut -d' ' -f1)
+            echo "Calculated SHA256: $SHA256"
+            rm "$TEMP_FILE"
+          else
+            echo "❌ Failed to download tarball"
+            exit 1
+          fi
         else
-          echo "❌ Failed to download tarball"
-          exit 1
+          echo "Got SHA256 from PyPI API: $SHA256"
+          echo "Tarball URL: $TARBALL_URL"
         fi
         
         # Create backup of original formula

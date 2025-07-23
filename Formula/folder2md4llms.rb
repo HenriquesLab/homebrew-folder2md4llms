@@ -3,8 +3,8 @@ class Folder2md4llms < Formula
 
   desc "Enhanced tool to concatenate folder contents into markdown for LLM consumption"
   homepage "https://github.com/henriqueslab/folder2md4llms"
-  url "https://files.pythonhosted.org/packages/08/1b/1f44e02a32cf6d9c837c0c7aa87df741f328ba00517d52b7010b6eb00757/folder2md4llms-0.4.35.tar.gz"
-  sha256 "a18b59884c060a7923ec1d71682d0f65e8886e9e4150cb56e3ea82581df0bcb2"
+  url "https://files.pythonhosted.org/packages/90/00/fe2f71b1b190c82bea70677c1aa5fa4a623408b2b25a68ddfb18e55b622f/folder2md4llms-0.4.37.tar.gz"
+  sha256 "771ba69f2b6167cf47d4045e3387e442f9ee57200b7ed8809d7366218e603984"
   license "MIT"
 
   depends_on "libyaml"
