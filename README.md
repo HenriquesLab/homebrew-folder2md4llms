@@ -4,13 +4,13 @@
 [![Test Formula](https://github.com/HenriquesLab/homebrew-folder2md4llms/actions/workflows/test-formula.yml/badge.svg)](https://github.com/HenriquesLab/homebrew-folder2md4llms/actions/workflows/test-formula.yml)
 [![Test Installation](https://github.com/HenriquesLab/homebrew-folder2md4llms/actions/workflows/test-installation.yml/badge.svg)](https://github.com/HenriquesLab/homebrew-folder2md4llms/actions/workflows/test-installation.yml)
 
-This tap provides the [folder2md4llms](https://github.com/HenriquesLab/folder2md4llms) package for Homebrew.
+This tap provides the [folder2md4llms](https://github.com/HenriquesLab/folder2md4llms) binary package for Homebrew as a standalone executable.
 
 ## Installation
 
 ```bash
 brew tap henriqueslab/folder2md4llms
-brew install folder2md4llms
+brew install --cask folder2md4llms-binary
 ```
 
 ## Usage
@@ -79,25 +79,24 @@ clipboard: false
 verbose: true
 ```
 
-## Simplified Formula
+## Binary Distribution
 
-This tap now uses a **simplified formula** that includes only core dependencies for maximum reliability:
+This tap provides a **pre-compiled binary cask** for maximum reliability and performance:
 
-### ✅ Core Dependencies Only
-- `click` (CLI framework)
-- `pyyaml` (YAML configuration)
-- `rich` (rich text formatting)
-- `markdown-it-py` (markdown processing)
-- `mdurl` (URL processing)
-- `pygments` (syntax highlighting)
+### ✅ Binary Benefits
+- **No Python required** - self-contained executable
+- **Fast startup** - no import overhead
+- **No dependency conflicts** - completely isolated
+- **Simple installation** - single file download
+- **Cross-platform** - works on Intel and Apple Silicon
 
-### ❌ No Problematic Dependencies
-- No `maturin` (Rust build tool)
-- No `cryptography` (complex C dependencies)
-- No `rust` compiler requirements
-- No `setuptools-rust` build dependencies
+### ❌ No Build Dependencies
+- No Python environment required
+- No compilation during installation
+- No dependency version conflicts
+- No virtual environment management
 
-This eliminates installation issues related to Rust compilation and complex C dependencies, making the installation process much more reliable across different systems.
+This eliminates installation issues completely by providing a standalone executable that works out of the box.
 
 ## Testing
 
@@ -126,29 +125,29 @@ To update to the latest version:
 
 ```bash
 brew update
-brew upgrade folder2md4llms
+brew upgrade --cask folder2md4llms-binary
 ```
 
 ## Development
 
-This formula was generated using homebrew-pypi-poet and includes all Python dependencies as resources for reliable, isolated installation.
+This cask provides a pre-compiled binary of folder2md4llms for easy installation without any build requirements.
 
-### Formula Details
+### Cask Details
 
-- **Python Version**: Requires Python 3.11+
-- **Dependencies**: Only core Python packages are bundled as resources (simplified approach)
-- **Virtual Environment**: Uses Homebrew's virtualenv system for isolation
-- **Platform Support**: macOS (primary), Linux (via Homebrew on Linux)
-- **Installation Method**: Simplified formula with minimal dependencies for maximum reliability
+- **Python Version**: Not required - standalone binary
+- **Dependencies**: None - self-contained executable
+- **Virtual Environment**: Not needed - binary runs directly
+- **Platform Support**: macOS Intel and Apple Silicon
+- **Installation Method**: Binary cask download with automatic verification
 
 ### Quality Assurance
 
-The simplified formula includes:
-- **Automated Testing**: CI workflows test installation on multiple platforms
-- **Dependency Validation**: Ensures no problematic dependencies are installed
+The binary cask includes:
+- **Automated Testing**: CI workflows test installation on multiple macOS versions
+- **Binary Verification**: SHA256 hash validation for download integrity
 - **Functionality Testing**: Comprehensive testing of core features
 - **Issue Automation**: Automated responses to common installation issues
-- **Regular Monitoring**: Daily checks for upstream changes
+- **Regular Monitoring**: Automated updates when new binaries are released
 
 ## Support
 
