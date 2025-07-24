@@ -1,4 +1,4 @@
-name: Update Binary Formula and Cask
+name: Update Binary Cask
 
 on:
   repository_dispatch:
@@ -18,7 +18,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  update-binary-formula:
+  update-binary-cask:
     runs-on: macos-latest
     timeout-minutes: 30
     
@@ -40,9 +40,9 @@ jobs:
       run: |
         echo "::group::Version detection for binary releases"
         
-        # Get current version from binary formula
-        CURRENT_VERSION=$(grep -o 'version "[^"]*"' Formula/folder2md4llms-binary.rb | sed 's/version "//' | sed 's/"//')
-        echo "Current binary formula version: $CURRENT_VERSION"
+        # Get current version from binary cask
+        CURRENT_VERSION=$(grep -o 'version "[^"]*"' Casks/folder2md4llms-binary.rb | sed 's/version "//' | sed 's/"//')
+        echo "Current binary cask version: $CURRENT_VERSION"
         
         # Get latest version from GitHub releases or input
         if [ -n "${{ github.event.inputs.version }}" ]; then
@@ -53,12 +53,28 @@ jobs:
           echo "Using dispatch version: $LATEST_VERSION"
         else
           echo "Checking GitHub releases for latest binary..."
-          LATEST_VERSION=$(curl -s https://api.github.com/repos/HenriquesLab/folder2md4llms/releases/latest | jq -r '.tag_name' | sed 's/^v//')
+          
+          # Check if any releases exist
+          RELEASE_CHECK=$(curl -s https://api.github.com/repos/HenriquesLab/folder2md4llms/releases/latest)
+          if echo "$RELEASE_CHECK" | grep -q '"message": "Not Found"'; then
+            echo "No GitHub releases found, skipping update"
+            echo "needs-update=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          LATEST_VERSION=$(echo "$RELEASE_CHECK" | jq -r '.tag_name' | sed 's/^v//')
           echo "Latest GitHub release version: $LATEST_VERSION"
           
+          # Validate the version is not null or empty
+          if [ "$LATEST_VERSION" = "null" ] || [ -z "$LATEST_VERSION" ]; then
+            echo "Invalid version from GitHub releases, skipping update"
+            echo "needs-update=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
           # Check if both architecture binaries exist in the release
-          INTEL_EXISTS=$(curl -s https://api.github.com/repos/HenriquesLab/folder2md4llms/releases/latest | jq -r '.assets[].name' | grep -c "folder2md-macos-x64" || true)
-          ARM_EXISTS=$(curl -s https://api.github.com/repos/HenriquesLab/folder2md4llms/releases/latest | jq -r '.assets[].name' | grep -c "folder2md-macos-arm64" || true)
+          INTEL_EXISTS=$(echo "$RELEASE_CHECK" | jq -r '.assets[].name' | grep -c "folder2md-macos-x64" || true)
+          ARM_EXISTS=$(echo "$RELEASE_CHECK" | jq -r '.assets[].name' | grep -c "folder2md-macos-arm64" || true)
           
           if [ "$INTEL_EXISTS" -eq 0 ] || [ "$ARM_EXISTS" -eq 0 ]; then
             echo "Missing macOS binaries in latest release, skipping update"
@@ -73,7 +89,7 @@ jobs:
         # Check if update is needed
         if [ "$CURRENT_VERSION" = "$LATEST_VERSION" ]; then
           echo "needs-update=false" >> $GITHUB_OUTPUT
-          echo "✅ Binary formula is already up to date"
+          echo "✅ Binary cask is already up to date"
         else
           echo "needs-update=true" >> $GITHUB_OUTPUT
           echo "Binary update needed: $CURRENT_VERSION -> $LATEST_VERSION"
@@ -142,28 +158,20 @@ jobs:
         
         echo "::endgroup::"
 
-    - name: Update binary formula and cask
+    - name: Update binary cask
       if: steps.versions.outputs.needs-update == 'true'
       id: update
       run: |
-        echo "::group::Updating binary formula and cask"
+        echo "::group::Updating binary cask"
         
         LATEST_VERSION="${{ steps.versions.outputs.latest-version }}"
         INTEL_SHA256="${{ steps.verify.outputs.intel-sha256 }}"
         ARM_SHA256="${{ steps.verify.outputs.arm-sha256 }}"
         
-        # Update binary formula
-        sed -i '' "s/version \"[^\"]*\"/version \"$LATEST_VERSION\"/" Formula/folder2md4llms-binary.rb
-        sed -i '' "s/INTEL_SHA256_TO_BE_UPDATED/$INTEL_SHA256/" Formula/folder2md4llms-binary.rb
-        sed -i '' "s/ARM64_SHA256_TO_BE_UPDATED/$ARM_SHA256/" Formula/folder2md4llms-binary.rb
-        
         # Update cask
         sed -i '' "s/version \"[^\"]*\"/version \"$LATEST_VERSION\"/" Casks/folder2md4llms-binary.rb
-        sed -i '' "s/ARM64_SHA256_TO_BE_UPDATED/$ARM_SHA256/" Casks/folder2md4llms-binary.rb
-        sed -i '' "s/INTEL_SHA256_TO_BE_UPDATED/$INTEL_SHA256/" Casks/folder2md4llms-binary.rb
-        
-        echo "Updated binary formula:"
-        head -20 Formula/folder2md4llms-binary.rb
+        sed -i '' "s/sha256 arm:   \"[^\"]*\"/sha256 arm:   \"$ARM_SHA256\"/" Casks/folder2md4llms-binary.rb
+        sed -i '' "s/intel: \"[^\"]*\"/intel: \"$INTEL_SHA256\"/" Casks/folder2md4llms-binary.rb
         
         echo "Updated cask:"
         head -15 Casks/folder2md4llms-binary.rb
@@ -181,36 +189,6 @@ jobs:
         
         echo "::endgroup::"
 
-    - name: Test updated binary formula
-      if: steps.versions.outputs.needs-update == 'true'
-      run: |
-        echo "::group::Testing updated binary formula"
-        
-        # Test formula syntax
-        brew audit --strict Formula/folder2md4llms-binary.rb || echo "Audit warnings are acceptable"
-        
-        # Install from local formula
-        brew install --formula ./Formula/folder2md4llms-binary.rb
-        
-        # Test basic functionality
-        folder2md --version
-        folder2md --help > /dev/null
-        
-        # Test with a simple example
-        echo "# Test Binary Formula" > test.md
-        folder2md . --output test_formula_output.md
-        
-        if [ ! -f "test_formula_output.md" ]; then
-          echo "❌ Formula output file not created"
-          exit 1
-        fi
-        
-        # Clean up test
-        rm -f test.md test_formula_output.md
-        brew uninstall folder2md4llms-binary
-        
-        echo "✅ Updated binary formula tests passed"
-        echo "::endgroup::"
 
     - name: Test updated cask
       if: steps.versions.outputs.needs-update == 'true'
@@ -258,13 +236,13 @@ jobs:
         git checkout -b "$BRANCH_NAME"
         
         # Stage and commit changes
-        git add Formula/folder2md4llms-binary.rb Casks/folder2md4llms-binary.rb
-        git commit -m "Update binary formula and cask to version $LATEST_VERSION
+        git add Casks/folder2md4llms-binary.rb
+        git commit -m "Update binary cask to version $LATEST_VERSION
 
         - Update version from $CURRENT_VERSION to $LATEST_VERSION
         - Update macOS binary URLs and SHA256 hashes for both architectures
         - Automated update from GitHub release
-        - Formula and cask validation and installation tests passed
+        - Cask validation and installation tests passed
 
         Generated by GitHub Actions"
         
@@ -274,22 +252,21 @@ jobs:
         # Create the PR
         gh pr create \
           --title "Update folder2md4llms-binary to $LATEST_VERSION" \
-          --body "## Automated Binary Formula and Cask Update
+          --body "## Automated Binary Cask Update
 
-        This PR updates the folder2md4llms-binary Homebrew formula and cask to version **$LATEST_VERSION**.
+        This PR updates the folder2md4llms-binary Homebrew cask to version **$LATEST_VERSION**.
 
         ### Changes
         - Version: \`$CURRENT_VERSION\` → \`$LATEST_VERSION\`
         - macOS binary URLs updated to GitHub release v$LATEST_VERSION
         - SHA256 hashes updated and verified for both Intel and ARM64
-        - Formula and cask syntax validation passed
+        - Cask syntax validation passed
         - Installation and functionality tests passed
 
         ### Testing
-        The updated formula and cask have been automatically tested with:
+        The updated cask has been automatically tested with:
         - Homebrew audit validation
         - Binary download and SHA256 verification
-        - Formula installation test (\`brew install --formula\`)
         - Cask installation test (\`brew install --cask\`)
         - Basic CLI functionality (\`folder2md --version\` and \`--help\`)
         - Simple file processing test
@@ -306,7 +283,7 @@ jobs:
           --label "automated-update,binary" \
           --assignee "${{ github.repository_owner }}"
         
-        echo "Binary formula and cask pull request created successfully"
+        echo "Binary cask pull request created successfully"
         echo "::endgroup::"
 
     - name: Cleanup on failure
@@ -315,7 +292,7 @@ jobs:
         echo "::group::Cleanup after failure"
         
         # Reset any changes
-        git checkout -- Formula/folder2md4llms-binary.rb Casks/folder2md4llms-binary.rb || true
+        git checkout -- Casks/folder2md4llms-binary.rb || true
         
         # Clean up any test files
         rm -f test.md test_formula_output.md test_cask_output.md
@@ -331,18 +308,18 @@ jobs:
       if: always()
       run: |
         echo "::group::Binary Update Summary"
-        echo "### Binary Formula and Cask Update Summary"
+        echo "### Binary Cask Update Summary"
         echo "- Current version: ${{ steps.versions.outputs.current-version }}"
         echo "- Latest version: ${{ steps.versions.outputs.latest-version }}"
         echo "- Update needed: ${{ steps.versions.outputs.needs-update }}"
         
         if [ "${{ steps.versions.outputs.needs-update }}" = "true" ]; then
           echo "- ✅ Binaries downloaded and verified"
-          echo "- ✅ Formula and cask updated successfully"
+          echo "- ✅ Cask updated successfully"
           echo "- ✅ Tests passed"
           echo "- ✅ Pull request created"
         else
-          echo "- ✅ Binary formula and cask are up to date"
+          echo "- ✅ Binary cask is up to date"
         fi
         
         echo "::endgroup::"
