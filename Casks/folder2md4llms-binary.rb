@@ -1,7 +1,7 @@
 cask "folder2md4llms-binary" do
   version "0.4.37"
-  sha256 arm:   "0000000000000000000000000000000000000000000000000000000000000000",
-         intel: "0000000000000000000000000000000000000000000000000000000000000000"
+  sha256 arm:   "1c4da79e58124eff1ba402fd27cc6166d4070a102b9f0a3c61762faccd4cce70",
+         intel: "b3454ad33998689ff93732d80d395d94a7bc022706f2a3e519082bb7c8dfaee9"
 
   url "https://github.com/HenriquesLab/folder2md4llms/releases/download/v#{version}/folder2md-macos-#{Hardware::CPU.intel? ? "x64" : "arm64"}"
   name "folder2md4llms"

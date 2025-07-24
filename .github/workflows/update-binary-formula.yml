@@ -196,7 +196,7 @@ jobs:
         echo "::group::Testing updated cask"
         
         # Test cask syntax
-        brew audit --strict --cask Casks/folder2md4llms-binary.rb || echo "Audit warnings are acceptable"
+        brew audit --strict folder2md4llms-binary || echo "Audit warnings are acceptable"
         
         # Install from local cask
         brew install --cask ./Casks/folder2md4llms-binary.rb
