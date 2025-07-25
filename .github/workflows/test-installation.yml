@@ -134,13 +134,13 @@ jobs:
         
         # Create config file
         cat > folder2md.yaml << EOF
-        output: config_test.md
-        include_patterns:
-          - "*.py"
-          - "*.md"
-        exclude_patterns:
-          - "test_output.md"
-        EOF
+output: config_test.md
+include_patterns:
+  - "*.py"
+  - "*.md"
+exclude_patterns:
+  - "test_output.md"
+EOF
         
         # Test with config
         folder2md .
