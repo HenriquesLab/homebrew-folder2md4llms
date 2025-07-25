@@ -8,10 +8,6 @@ cask "folder2md4llms-binary" do
   desc "Enhanced tool to concatenate folder contents into markdown for LLM consumption"
   homepage "https://github.com/henriqueslab/folder2md4llms"
 
-  livecheck do
-    url :url
-    strategy :github_latest
-  end
 
   binary "folder2md-macos-#{Hardware::CPU.intel? ? "x64" : "arm64"}", target: "folder2md"
 
