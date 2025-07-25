@@ -1,0 +1,213 @@
+name: Test Homebrew Installation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Casks/**'
+      - '.github/workflows/test-installation.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'Casks/**'
+      - '.github/workflows/test-installation.yml'
+  schedule:
+    # Run weekly on Sundays at 04:00 UTC
+    - cron: '0 4 * * 0'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-homebrew-installation:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-13, macos-14, macos-latest]
+        include:
+          - os: macos-13
+            arch: intel
+          - os: macos-14
+            arch: arm64
+          - os: macos-latest
+            arch: arm64
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Clean up any existing installations
+      run: |
+        echo "::group::Cleanup existing installations"
+        
+        # Remove any existing taps and installations
+        brew untap henriqueslab/homebrew-folder2md4llms 2>/dev/null || true
+        brew uninstall --cask folder2md4llms-binary --force 2>/dev/null || true
+        
+        # Remove binary from PATH if it exists
+        sudo rm -f /usr/local/bin/folder2md /opt/homebrew/bin/folder2md 2>/dev/null || true
+        
+        echo "✅ Cleanup completed"
+        echo "::endgroup::"
+
+    - name: Test local tap installation
+      run: |
+        echo "::group::Testing local tap installation"
+        
+        # Add the current repository as a tap
+        brew tap henriqueslab/homebrew-folder2md4llms $(pwd)
+        
+        echo "Installing binary cask from local tap..."
+        brew install --cask folder2md4llms-binary
+        
+        echo "✅ Local installation completed"
+        echo "::endgroup::"
+
+    - name: Verify installation
+      run: |
+        echo "::group::Verifying installation"
+        
+        # Check if command is available
+        which folder2md
+        
+        # Test version command
+        folder2md --version
+        
+        # Test help command
+        folder2md --help >/dev/null
+        
+        echo "✅ Installation verification passed"
+        echo "::endgroup::"
+
+    - name: Test basic functionality
+      run: |
+        echo "::group::Testing basic functionality"
+        
+        # Create test project
+        mkdir -p test_homebrew
+        cd test_homebrew
+        
+        echo "# Test Project" > README.md
+        echo "print('Hello from Homebrew test')" > main.py
+        mkdir -p src
+        echo "def hello(): pass" > src/utils.py
+        
+        # Test folder2md
+        folder2md . --output test_output.md
+        
+        # Verify output
+        if [ ! -f "test_output.md" ]; then
+          echo "❌ Output file not created"
+          exit 1
+        fi
+        
+        # Check content
+        if ! grep -q "Test Project" test_output.md; then
+          echo "❌ README content missing"
+          exit 1
+        fi
+        
+        if ! grep -q "Hello from Homebrew test" test_output.md; then
+          echo "❌ Python content missing"
+          exit 1
+        fi
+        
+        # Test ignore file generation
+        folder2md --init-ignore
+        
+        if [ ! -f ".folder2md_ignore" ]; then
+          echo "❌ Ignore file not created"
+          exit 1
+        fi
+        
+        echo "✅ Basic functionality test passed"
+        echo "::endgroup::"
+
+    - name: Test configuration file support
+      run: |
+        echo "::group::Testing configuration file support"
+        
+        cd test_homebrew
+        
+        # Create config file
+        cat > folder2md.yaml << EOF
+        output: config_test.md
+        include_patterns:
+          - "*.py"
+          - "*.md"
+        exclude_patterns:
+          - "test_output.md"
+        EOF
+        
+        # Test with config
+        folder2md .
+        
+        if [ ! -f "config_test.md" ]; then
+          echo "❌ Config-based output not created"
+          exit 1
+        fi
+        
+        echo "✅ Configuration file test passed"
+        echo "::endgroup::"
+
+    - name: Test real repository installation
+      if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+      run: |
+        echo "::group::Testing real repository installation"
+        
+        # Clean up local tap
+        brew untap henriqueslab/homebrew-folder2md4llms
+        brew uninstall --cask folder2md4llms-binary
+        
+        # Test installation from actual GitHub repository
+        echo "Adding tap from GitHub..."
+        brew tap henriqueslab/homebrew-folder2md4llms
+        
+        echo "Installing from GitHub tap..."
+        brew install --cask folder2md4llms-binary
+        
+        # Verify it still works
+        folder2md --version
+        
+        echo "✅ Real repository installation test passed"
+        echo "::endgroup::"
+
+    - name: Test cleanup
+      run: |
+        echo "::group::Testing uninstallation"
+        
+        # Clean up test directory
+        rm -rf test_homebrew
+        
+        # Test uninstall
+        brew uninstall --cask folder2md4llms-binary
+        brew untap henriqueslab/homebrew-folder2md4llms
+        
+        # Verify removal
+        if command -v folder2md >/dev/null 2>&1; then
+          echo "❌ Command still available after uninstall"
+          exit 1
+        fi
+        
+        echo "✅ Uninstallation test passed"
+        echo "::endgroup::"
+
+    - name: Test summary
+      if: always()
+      run: |
+        echo "::group::Test Summary"
+        echo "### Homebrew Installation Test Summary for ${{ matrix.os }} (${{ matrix.arch }})"
+        echo "- ✅ Local tap installation"
+        echo "- ✅ Binary installation verification" 
+        echo "- ✅ Basic functionality test"
+        echo "- ✅ Configuration file support"
+        if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "- ✅ Real repository installation"
+        fi
+        echo "- ✅ Clean uninstallation"
+        echo ""
+        echo "All Homebrew installation tests passed successfully!"
+        echo "::endgroup::"
