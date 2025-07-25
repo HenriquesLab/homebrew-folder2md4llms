@@ -15,12 +15,6 @@ cask "folder2md4llms-binary" do
 
   binary "folder2md-macos-#{Hardware::CPU.intel? ? "x64" : "arm64"}", target: "folder2md"
 
-  postflight do
-    # Ensure the binary is executable
-    system_command "/bin/chmod",
-                   args: ["+x", "#{staged_path}/folder2md-macos-#{Hardware::CPU.intel? ? "x64" : "arm64"}"],
-                   sudo: false
-  end
 
   test do
     system "#{bin}/folder2md", "--version"
