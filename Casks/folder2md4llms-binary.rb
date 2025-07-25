@@ -12,33 +12,6 @@ cask "folder2md4llms-binary" do
   binary "folder2md-macos-#{Hardware::CPU.intel? ? "x64" : "arm64"}", target: "folder2md"
 
 
-  test do
-    system "#{bin}/folder2md", "--version"
-    system "#{bin}/folder2md", "--help"
-
-    # Test basic functionality
-    (testpath/"test.py").write("print('hello world')")
-    (testpath/"README.md").write("# Test Project")
-
-    # Process the test directory
-    system "#{bin}/folder2md", testpath, "--output", "test.md"
-    assert_path_exists testpath/"test.md"
-
-    # Check that the output contains expected content
-    output_content = File.read(testpath/"test.md")
-    assert_match "test.py", output_content
-    assert_match "README.md", output_content
-    assert_match "Test Project", output_content
-
-    # Test ignore file generation
-    system "#{bin}/folder2md", "--init-ignore"
-    assert_path_exists testpath/".folder2md_ignore"
-
-    # Verify ignore file has expected content
-    ignore_content = File.read(testpath/".folder2md_ignore")
-    assert_match "node_modules/", ignore_content
-    assert_match "*.pyc", ignore_content
-  end
 
   caveats <<~EOS
     This is the standalone binary version of folder2md4llms.
