@@ -1,15 +1,15 @@
 # Homebrew Tap for folder2md4llms
 
-[![CI](https://github.com/HenriquesLab/homebrew-folder2md4llms/actions/workflows/ci.yml/badge.svg)](https://github.com/HenriquesLab/homebrew-folder2md4llms/actions/workflows/ci.yml)
-[![Test Formula](https://github.com/HenriquesLab/homebrew-folder2md4llms/actions/workflows/test-formula.yml/badge.svg)](https://github.com/HenriquesLab/homebrew-folder2md4llms/actions/workflows/test-formula.yml)
-[![Test Installation](https://github.com/HenriquesLab/homebrew-folder2md4llms/actions/workflows/test-installation.yml/badge.svg)](https://github.com/HenriquesLab/homebrew-folder2md4llms/actions/workflows/test-installation.yml)
+[![Update Binary Cask](https://github.com/HenriquesLab/homebrew-folder2md4llms/actions/workflows/update-binary-formula.yml/badge.svg)](https://github.com/HenriquesLab/homebrew-folder2md4llms/actions/workflows/update-binary-formula.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![macOS](https://img.shields.io/badge/macOS-Intel%20%26%20Apple%20Silicon-blue.svg)](https://github.com/HenriquesLab/homebrew-folder2md4llms)
 
 This tap provides the [folder2md4llms](https://github.com/HenriquesLab/folder2md4llms) binary package for Homebrew as a standalone executable.
 
 ## Installation
 
 ```bash
-brew tap henriqueslab/folder2md4llms
+brew tap henriqueslab/tap
 brew install --cask folder2md4llms-binary
 ```
 
@@ -101,13 +101,12 @@ This eliminates installation issues completely by providing a standalone executa
 ## Testing
 
 This tap includes comprehensive GitHub Actions workflows to test:
-- **CI**: Basic formula validation and syntax checking
-- **Formula Testing**: Multi-platform installation testing (macOS 13, macOS 14)
-- **Installation Testing**: Cross-platform functionality testing (macOS and Linux)
-- **Dependency Validation**: Ensures only core dependencies are installed
+- **Binary Cask Updates**: Automated updates from upstream releases (update-binary-formula.yml)
+- **Multi-platform Testing**: Installation testing on Intel and Apple Silicon macOS
+- **Binary Verification**: SHA256 hash validation for download integrity
 - **Functionality Testing**: Comprehensive feature testing including configuration files, ignore patterns, and output generation
-- **Issue Handling**: Automated support for installation issues
-- **Daily Regression Testing**: Automatic testing to catch upstream changes
+- **Automated Updates**: Automatic binary updates when new versions are released
+- **Installation Validation**: Ensures binary works correctly after installation
 
 ## About
 
@@ -143,10 +142,10 @@ This cask provides a pre-compiled binary of folder2md4llms for easy installation
 ### Quality Assurance
 
 The binary cask includes:
-- **Automated Testing**: CI workflows test installation on multiple macOS versions
+- **Automated Updates**: GitHub Actions workflow monitors upstream releases
 - **Binary Verification**: SHA256 hash validation for download integrity
 - **Functionality Testing**: Comprehensive testing of core features
-- **Issue Automation**: Automated responses to common installation issues
+- **Multi-architecture Support**: Native binaries for Intel and Apple Silicon
 - **Regular Monitoring**: Automated updates when new binaries are released
 
 ## Support
