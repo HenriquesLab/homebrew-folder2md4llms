@@ -22,8 +22,12 @@ cask "folder2md4llms-binary" do
       ✓ Single executable file
       ✓ No dependency conflicts
     
-    For the Python package version (requires Python 3.11+):
-      brew install henriqueslab/tap/folder2md4llms
+    For the Python package version (recommended):
+      uv tool install folder2md4llms
+    
+    Or via Homebrew:
+      brew tap henriqueslab/homebrew-folder2md4llms
+      brew install folder2md4llms
     
     Documentation: https://github.com/henriqueslab/folder2md4llms
   EOS

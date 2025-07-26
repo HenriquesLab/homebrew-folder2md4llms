@@ -9,7 +9,7 @@ This tap provides the [folder2md4llms](https://github.com/HenriquesLab/folder2md
 ## Installation
 
 ```bash
-brew tap henriqueslab/tap
+brew tap henriqueslab/homebrew-folder2md4llms
 brew install --cask folder2md4llms-binary
 ```
 
